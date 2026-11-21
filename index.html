@@ -46,13 +46,23 @@
   }
   .btn:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 #8f2f28; }
   .btn:active { transform: translate(3px,3px); box-shadow: 2px 2px 0 #8f2f28; }
-  .btn.music-toggle {
-    font-size: clamp(13px, 1.7vw, 17px); padding: 8px 22px; margin-top: 14px;
-    background: #2f6fb0; border-color: #cfe3ff; box-shadow: 4px 4px 0 #1b4675;
+  .btn.god-toggle {
+    font-size: clamp(13px, 1.7vw, 17px); padding: 8px 22px; margin-top: 10px;
+    background: #6a4fa8; border-color: #e6d4ff; box-shadow: 4px 4px 0 #3d2d6b;
   }
-  .btn.music-toggle:hover { box-shadow: 6px 6px 0 #1b4675; }
-  .btn.music-toggle.off { background: #5a6076; box-shadow: 4px 4px 0 #363b4d; }
-  .btn.music-toggle.off:hover { box-shadow: 6px 6px 0 #363b4d; }
+  .btn.god-toggle:hover { box-shadow: 6px 6px 0 #3d2d6b; }
+  .btn.god-toggle.on {
+    background: #c9982f; border-color: #fff3c4; box-shadow: 4px 4px 0 #7a5c12;
+    color: #fffbe6;
+  }
+  .btn.god-toggle.on:hover { box-shadow: 6px 6px 0 #7a5c12; }
+  .secret-hint {
+    margin-top: 16px; font-size: clamp(13px, 1.7vw, 17px); font-weight: bold;
+    color: #ffd451; letter-spacing: 2px; text-shadow: 0 0 12px rgba(255,212,81,.7);
+    animation: hintPulse 1.2s ease-in-out infinite;
+  }
+  .secret-hint.hidden { display: none; }
+  @keyframes hintPulse { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
   .controls {
     margin-top: 24px; max-width: 780px; line-height: 1.85;
     font-size: clamp(12px, 1.5vw, 16px); color: #b9cdf0;
@@ -150,7 +160,8 @@
     <h1>腌鱼勇者</h1>
     <div class="sub">奶蛙纪元 · 一条咸鱼的离奇复仇</div>
     <button class="btn" id="startBtn">开始冒险</button>
-    <button class="btn music-toggle" id="musicBtn">♫ 音乐：开</button>
+    <button class="btn god-toggle" id="godBtn">🛡 无敌模式：关</button>
+    <div id="secretHint" class="secret-hint hidden">♫ 隐藏 BGM 已解锁</div>
     <div class="controls">
       <span class="key">A</span><span class="key">D</span> 移动　
       <span class="key">K</span> 跳跃（按住更高·轻按更矮·可多段）　
@@ -494,8 +505,9 @@ function advanceStory() {
 
 /* ---------- audio ---------- */
 let audioCtx = null, muted = false;
-// 背景音乐：默认开启。浏览器要求用户手势后才能播放，故在首次点击时启动。
-let musicOn = true;
+// 背景音乐：默认关闭。仅当在标题画面按魂斗罗秘籍顺序输入 Z Y Y N B 后解锁播放。
+let musicOn = false;
+let godMode = false; // 无敌模式（锁血），默认关闭，可用主菜单按钮或 G 键切换
 const bgm = new Audio('assets/music.mp3');
 bgm.loop = true;
 bgm.volume = 0.38;
@@ -509,17 +521,43 @@ function startBgm() {
   const pr = bgm.play();
   if (pr && pr.catch) pr.catch(() => {}); // 自动播放被拦截时静默，等下次手势
 }
-function updateMusicBtn() {
-  const b = document.getElementById('musicBtn');
-  if (!b) return;
-  b.textContent = musicOn ? '♫ 音乐：开' : '♪ 音乐：关';
-  b.classList.toggle('off', !musicOn);
+/* 魂斗罗式秘籍：在标题画面依次输入 Z Y Y N B 解锁隐藏 BGM */
+const SECRET_CODE = ['z', 'y', 'y', 'n', 'b'];
+let secretProgress = 0, bgmUnlocked = false;
+function checkSecret(k) {
+  if (state !== 'start' || bgmUnlocked) return;
+  if (k === SECRET_CODE[secretProgress]) {
+    secretProgress++;
+    if (secretProgress === SECRET_CODE.length) {
+      bgmUnlocked = true;
+      musicOn = true;
+      audioCtxResume();
+      syncBgm();
+      startBgm();
+      const hint = document.getElementById('secretHint');
+      if (hint) hint.classList.remove('hidden');
+      beep(660, 0.1, 'square', 0.06);
+      setTimeout(() => beep(880, 0.1, 'square', 0.06), 110);
+      setTimeout(() => beep(1180, 0.18, 'square', 0.06), 220);
+    }
+  } else {
+    // 允许从错误处重新开始匹配（例如输错后又重新敲 z）
+    secretProgress = (k === SECRET_CODE[0]) ? 1 : 0;
+  }
 }
-function toggleMusic() {
-  musicOn = !musicOn;
-  updateMusicBtn();
-  syncBgm();
-  if (musicOn) { audioCtxResume(); startBgm(); }
+function updateGodBtn() {
+  const b = document.getElementById('godBtn');
+  if (!b) return;
+  b.textContent = godMode ? '🛡 无敌模式：开' : '🛡 无敌模式：关';
+  b.classList.toggle('on', godMode);
+}
+function toggleGodMode() {
+  godMode = !godMode;
+  updateGodBtn();
+  if (state === 'playing' && player) {
+    addText(player.x + player.w / 2, player.y - 26, godMode ? '无敌模式 ON' : '无敌模式 OFF', godMode ? '#ffd451' : '#9fb6d8', 20);
+    if (godMode) player.hp = player.maxHp; // 开启时立刻锁满血
+  }
 }
 function audioCtxResume() {
   try { if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume(); } catch (e) {}
@@ -547,6 +585,11 @@ window.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   if ([' ', 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(k)) e.preventDefault();
 
+  // 标题画面秘籍输入：Z Y Y N B 解锁隐藏 BGM（按住不重复触发）
+  if (!keys[k]) checkSecret(k);
+  // 标题画面只处理秘籍，避免 N（静音）/B（背包）等键产生副作用
+  if (state === 'start') { keys[k] = true; return; }
+
   if (storyActive) {
     if (['j', 'z', ' ', 'enter', 'f', 'k', 'm', 'b', 'n', 'p', 'u', 'l', 'escape'].indexOf(k) >= 0 && !keys[k]) advanceStory();
     keys[k] = true;
@@ -561,6 +604,7 @@ window.addEventListener('keydown', e => {
   }
   if (k === 'm' && !keys[k]) toggleMap();
   if (k === 'b' && !keys[k]) toggleBag();
+  if (k === 'g' && !keys[k]) toggleGodMode();
   if (k === 'escape') { if (mapOpen) mapOpen = false; else if (bagOpen) closeBag(); }
   if (k === 'k' && !keys[k]) jumpBuffer = 0.16;
   keys[k] = true;
@@ -1179,6 +1223,7 @@ function killEnemy(e) {
 }
 
 function hurtPlayer(dmg, fromX) {
+  if (godMode) { player.hp = player.maxHp; return; } // 无敌模式：锁满血，测试用
   if (player.invuln > 0 || state !== 'playing') return;
   dmg = Math.max(1, Math.round(dmg * (1 - player.armor)));
   player.hp -= dmg;
@@ -1858,6 +1903,27 @@ function drawPlayer() {
   ctx.beginPath();
   ctx.ellipse(p.x + p.w / 2, GROUND + 4, 30, 6, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  if (godMode && state === 'playing') {
+    const cx = p.x + p.w / 2, cy = p.y + p.h / 2;
+    const pulse = 0.5 + Math.sin(gameTime * 6) * 0.18;
+    ctx.save();
+    ctx.globalAlpha = pulse;
+    ctx.strokeStyle = '#ffd451'; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, p.w * 0.82, p.h * 0.62, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = pulse * 0.35;
+    ctx.fillStyle = '#ffe98a';
+    ctx.fill();
+    ctx.restore();
+    ctx.save();
+    ctx.font = 'bold 13px "Microsoft YaHei", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffd451';
+    ctx.fillText('🛡 无敌', cx, p.y - 12);
+    ctx.restore();
+  }
 }
 function drawEnemy(e) {
   const isBoss = e.type === 'boss';
@@ -1964,8 +2030,13 @@ function drawHUD() {
     : (player.y < -80 ? '☁ 云端浮岛（高空秘境）' : AREAS[areaIndex]);
   ctx.fillText(areaLabel, W / 2, 25);
   ctx.font = 'bold 12px "Microsoft YaHei", sans-serif';
-  ctx.fillStyle = '#9fb6d8';
-  ctx.fillText('第 ' + wave + ' 波' + (player.hasRanged ? '　·　🐿 远程' : '') + '　·　M地图 B背包', W / 2, 48);
+  if (godMode) {
+    ctx.fillStyle = '#ffd451';
+    ctx.fillText('🛡 无敌模式 ON（锁血）', W / 2, 48);
+  } else {
+    ctx.fillStyle = '#9fb6d8';
+    ctx.fillText('第 ' + wave + ' 波' + (player.hasRanged ? '　·　🐿 远程' : '') + '　·　M地图 B背包', W / 2, 48);
+  }
 
   ctx.textAlign = 'right';
   ctx.font = 'bold 22px monospace';
@@ -2253,11 +2324,8 @@ function togglePause() {
 document.getElementById('startBtn').addEventListener('click', startGame);
 document.getElementById('restartBtn').addEventListener('click', startGame);
 document.getElementById('victoryBtn').addEventListener('click', startGame);
-document.getElementById('musicBtn').addEventListener('click', () => {
-  audioCtxResume();
-  toggleMusic(); // 点击开关也是用户手势，开启时可立即播放
-});
-updateMusicBtn(); // 初始化按钮显示为「开」
+document.getElementById('godBtn').addEventListener('click', toggleGodMode);
+updateGodBtn();   // 初始化按钮显示为「关」
 document.getElementById('shopCloseBtn').addEventListener('click', closeShop);
 document.getElementById('bagCloseBtn').addEventListener('click', closeBag);
 storyScreen.addEventListener('pointerdown', advanceStory);
