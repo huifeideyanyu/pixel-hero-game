@@ -81,6 +81,12 @@
   }
   .hero-card:hover { transform: translateY(-4px); }
   .hero-card.selected { border-color: #ffd451; box-shadow: 5px 5px 0 #a35c14, 0 0 22px rgba(255,212,81,.35); }
+  .hero-card.hc-secret { border-color: #b8860b; background: linear-gradient(160deg, #24304f, #3a2c12); }
+  .hero-card.hc-secret::after {
+    content: 'SECRET'; position: absolute; top: 8px; right: -26px; transform: rotate(38deg);
+    background: #ffd451; color: #3a2400; font-size: 11px; font-weight: bold; letter-spacing: 2px;
+    padding: 3px 30px; box-shadow: 0 2px 6px rgba(0,0,0,.4);
+  }
   .hero-card .hc-badge {
     position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
     background: #ffd451; color: #3a2400; font-size: 13px; font-weight: bold;
@@ -159,6 +165,7 @@
     color: #ffd451; letter-spacing: 2px; text-shadow: 0 0 12px rgba(255,212,81,.7);
     animation: hintPulse 1.2s ease-in-out infinite;
   }
+  .secret-hint.naijia-hint { color: #ffe98a; font-size: clamp(14px, 1.9vw, 19px); }
   .secret-hint.hidden { display: none; }
   @keyframes hintPulse { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
   .controls {
@@ -423,13 +430,14 @@
 
   <div id="startScreen" class="screen">
     <h1>腌鱼勇者 · 奶蛙纪元</h1>
-    <div class="ver-badge">版本 <b id="verNum">1.5</b></div>
+    <div class="ver-badge">版本 <b id="verNum">2.1</b> <span id="verEdition">正式版</span></div>
     <div class="sub">杂鱼翻身，奶蛙称王——选个主角，杀出缸去</div>
     <button class="btn" id="heroSelectBtn">⚔ 选择主角</button>
     <button class="btn" id="startBtn">开始冒险</button>
     <button class="btn rogue-toggle" id="rogueBtn">🎲 无尽闯关（Roguelike）</button>
     <button class="btn god-toggle" id="godBtn">🛡 无敌模式：关</button>
     <div id="secretHint" class="secret-hint hidden">♫ 隐藏 BGM 已解锁</div>
+    <div id="naijiaHint" class="secret-hint naijia-hint hidden">🐸 隐藏角色「奶蛙人」已解锁 · 快去选择主角！</div>
     <div id="mobileSecret">
       <input id="secretInput" type="text" maxlength="12" placeholder="输入秘籍" autocomplete="off" autocapitalize="off" spellcheck="false">
       <button id="secretGo">♫ 解锁 BGM</button>
@@ -459,7 +467,7 @@
 
   <div id="heroSelectScreen" class="screen hidden">
     <h1>选择你的主角</h1>
-    <div class="sub">四位勇者，四种流派——选一个去闯奶蛙大陆</div>
+    <div class="sub">六位勇者，六种流派——选一个去闯奶蛙大陆（其中一位藏着没露面？）</div>
     <div class="hero-grid" id="heroGrid"></div>
     <button class="btn" id="heroBackBtn" style="margin-top:18px">返回</button>
   </div>
@@ -568,7 +576,8 @@
 'use strict';
 const cvs = document.getElementById('game');
 const ctx = cvs.getContext('2d');
-const GAME_VERSION = '1.5'; // 版本号：改这里即可同步浏览器标题与主菜单徽章
+const GAME_VERSION = '2.1'; // 版本号：改这里即可同步浏览器标题与主菜单徽章
+const GAME_EDITION = '正式版'; // 版本后缀：显示在主菜单徽章与浏览器标题
 const W = 960, H = 540, GROUND = 440;
 const JUMP_CUT_VY = -340; // 轻按 K 松手后锁定的上升速度：越接近 0，短按跳越矮（长按不受影响）
 const SKY_TOP = -1320; // 天空区域顶部（世界坐标 y，向上为负）：覆盖三片高空秘境
@@ -692,6 +701,8 @@ const rogueRewardFloorEl = document.getElementById('rogueRewardFloor');
 const perkGridEl = document.getElementById('perkGrid');
 
 const imgHero = new Image();
+const imgHeroMars = new Image();
+const imgWeaponStick = new Image();
 const imgHeroGirl = new Image();
 const imgHeroMiku = new Image();
 const imgWeaponMiku = new Image();
@@ -787,7 +798,15 @@ DECOR_NAMES.forEach(n => {
   imgDecor[n] = new Image();
   imgDecor[n].src = 'assets/decor-' + n + '.png';
 });
-let tintHeroWhite = null, tintHeroGirlWhite = null, tintHeroMikuWhite = null, tintHeroScarfWhite = null, tintEnemyRed = null, tintBossRed = null, tintRangedRed = null, tintEliteRed = null, tintEnemyGold = null;
+let tintHeroWhite = null, tintHeroGirlWhite = null, tintHeroMikuWhite = null, tintHeroScarfWhite = null, tintHeroMarsWhite = null, tintEnemyRed = null, tintBossRed = null, tintRangedRed = null, tintEliteRed = null, tintEnemyGold = null;
+let tintHeroNaijiaWhite = null;
+// 隐藏角色奶蛙人：贴图只在解锁后才下载，不占首屏加载
+const imgHeroNaijia = new Image();
+function ensureNaijiaAssets() {
+  if (imgHeroNaijia.src) return;
+  imgHeroNaijia.onload = () => { try { tintHeroNaijiaWhite = makeTint(imgHeroNaijia, '#ffffff'); } catch (e) {} };
+  imgHeroNaijia.src = 'assets/hero-naijia.png';
+}
 let tintBossGeneralRed = null, tintBossSaltRed = null, tintBossJarRed = null, tintBossBlobRed = null, tintBossTurtleRed = null, tintBossKimonoRed = null, tintEnemyCrystalRed = null, tintEnemyAshRed = null;
 let bgPattern = null, arenaPattern = null;
 
@@ -841,11 +860,12 @@ function buildArenaPattern() {
 }
 function onAsset() {
   arrived++;
-  if (arrived >= 28) {
+  if (arrived >= 30) {
     tintHeroWhite = makeTint(imgHero, '#ffffff');
     tintHeroGirlWhite = makeTint(imgHeroGirl, '#ffffff');
     tintHeroMikuWhite = makeTint(imgHeroMiku, '#ffffff');
     tintHeroScarfWhite = makeTint(imgHeroScarf, '#ffffff');
+    tintHeroMarsWhite = makeTint(imgHeroMars, '#ffffff');
     tintEnemyRed = makeTint(imgEnemy, '#ff5544');
     tintBossRed = makeTint(imgBoss, '#ff5544');
     tintRangedRed = makeTint(imgRanged, '#ff5544');
@@ -866,6 +886,8 @@ function onAsset() {
   }
 }
 imgHero.onload = onAsset;
+imgHeroMars.onload = onAsset;
+imgWeaponStick.onload = onAsset;
 imgHeroGirl.onload = onAsset;
 imgHeroMiku.onload = onAsset;
 imgWeaponMiku.onload = onAsset;
@@ -895,7 +917,7 @@ imgBg.onload = onAsset;
 imgArenaBg.onload = onAsset;
 // 首屏健壮性：异步解码减少主线程阻塞、任一图加载失败也计数、极慢网络 3.5 秒强制放行
 [
-  imgHero, imgHeroGirl, imgHeroMiku, imgWeaponMiku, imgHeroScarf, imgWeaponPack,
+  imgHero, imgHeroMars, imgWeaponStick, imgHeroGirl, imgHeroMiku, imgWeaponMiku, imgHeroScarf, imgWeaponPack,
   imgScallion, imgWeaponCig, imgEnemy, imgBoss, imgWeapon, imgMerchant,
   imgSquirrel, imgRanged, imgNpcZhimin, imgNpcLusi, imgElite, imgBossGeneral,
   imgBossSalt, imgBossJar, imgBossBlob, imgBossTurtle, imgBossKimono, imgAltar,
@@ -912,6 +934,8 @@ function forceAssetsReady() {
 }
 setTimeout(forceAssetsReady, 3500);
 imgHero.src = 'assets/hero.png';
+imgHeroMars.src = 'assets/hero-mars.png';
+imgWeaponStick.src = 'assets/weapon-stick.png';
 imgHeroGirl.src = 'assets/hero-girl.png';
 imgHeroMiku.src = 'assets/hero-miku-boy.png';
 imgWeaponMiku.src = 'assets/weapon-miku.png';
@@ -1109,30 +1133,40 @@ function startBgm() {
   const pr = bgm.play();
   if (pr && pr.catch) pr.catch(() => {}); // 自动播放被拦截时静默，等下次手势
 }
-/* 魂斗罗式秘籍：在标题画面依次输入 Z Y Y N B 解锁隐藏 BGM */
-const SECRET_CODE = ['z', 'y', 'y', 'n', 'b'];
-let secretProgress = 0, bgmUnlocked = false;
+/* 魂斗罗式秘籍：标题画面输入 zyynb 解锁 BGM；输入 naijiarenjihe 解锁隐藏角色 奶蛙人 */
+const SECRET_CODES = [
+  { code: 'zyynb',         done: false, onUnlock: unlockBgm },
+  { code: 'naijiarenjihe', done: false, onUnlock: unlockNaijia }
+];
+let secretBuf = '';
 function checkSecret(k) {
-  if (state !== 'start' || bgmUnlocked) return;
-  if (k === SECRET_CODE[secretProgress]) {
-    secretProgress++;
-    if (secretProgress === SECRET_CODE.length) {
-      bgmUnlocked = true;
-      if (!bgm.src) bgm.src = 'assets/music.mp3'; // 解锁瞬间才下载音频
-      musicOn = true;
-      audioCtxResume();
-      syncBgm();
-      startBgm();
-      const hint = document.getElementById('secretHint');
-      if (hint) hint.classList.remove('hidden');
-      beep(660, 0.1, 'square', 0.06);
-      setTimeout(() => beep(880, 0.1, 'square', 0.06), 110);
-      setTimeout(() => beep(1180, 0.18, 'square', 0.06), 220);
-    }
-  } else {
-    // 允许从错误处重新开始匹配（例如输错后又重新敲 z）
-    secretProgress = (k === SECRET_CODE[0]) ? 1 : 0;
-  }
+  if (state !== 'start') return;
+  secretBuf = (secretBuf + (k || '')).toLowerCase().slice(-16);
+  SECRET_CODES.forEach(c => {
+    if (!c.done && secretBuf.slice(-c.code.length) === c.code) { c.done = true; c.onUnlock(); }
+  });
+}
+function unlockBgm() {
+  if (!bgm.src) bgm.src = 'assets/music.mp3'; // 解锁瞬间才下载音频
+  musicOn = true;
+  audioCtxResume();
+  syncBgm();
+  startBgm();
+  const hint = document.getElementById('secretHint');
+  if (hint) hint.classList.remove('hidden');
+  beep(660, 0.1, 'square', 0.06);
+  setTimeout(() => beep(880, 0.1, 'square', 0.06), 110);
+  setTimeout(() => beep(1180, 0.18, 'square', 0.06), 220);
+}
+function unlockNaijia() {
+  naijiaUnlocked = true;
+  try { localStorage.setItem('naijiaUnlocked', '1'); } catch (e) {}
+  ensureNaijiaAssets();
+  const hint = document.getElementById('naijiaHint');
+  if (hint) hint.classList.remove('hidden');
+  beep(520, 0.1, 'square', 0.06);
+  setTimeout(() => beep(780, 0.1, 'square', 0.06), 120);
+  setTimeout(() => beep(1040, 0.22, 'square', 0.06), 240);
 }
 function updateGodBtn() {
   const b = document.getElementById('godBtn');
@@ -1314,11 +1348,28 @@ const HEROES = {
   },
   scarf: {
     id: 'scarf', name: '烟客', title: '烟盒武者 · 烟客', color: '#9fb8ff',
-    tagline: '黑发绿围巾的神秘客，抄起中南海烟盒近身硬刚。',
-    stats: '❤ 生命 110　⚔ 近战烟盒　✦ 坦克型',
+    tagline: '黑发绿围巾的神秘客，抄起颜悦烟盒近身硬刚。',
+    stats: '❤ 生命 110　⚔ 近战烟盒　✦ 尼古丁型',
     perk: '被动：生命上限最高、近战伤害更高、暴击率加成',
     img: () => imgHeroScarf, white: () => tintHeroScarfWhite, weaponId: 'pack',
     maxHp: 110, ranged: false, spd: 0.96, crit: 0.15, atkSpeed: 1.0, dashCd: 1.25, meleeBonus: 10
+  },
+  mars: {
+    id: 'mars', name: '火星人', title: '华晨宇粉丝 · 火星人', color: '#ff6b6b',
+    tagline: '火星演唱会散场被卷进奶蛙大陆的死忠粉丝，红色应援棒就是他的信仰。',
+    stats: '❤ 生命 95　⚔ 火星应援棒　✦ 应援流',
+    perk: '被动：远程发射火星光弹，攻速快、暴击率加成，子弹自带应援红光',
+    img: () => imgHeroMars, white: () => tintHeroMarsWhite, weaponId: 'stick',
+    maxHp: 95, ranged: true, spd: 1.06, crit: 0.15, atkSpeed: 1.2, dashCd: 1.05
+  },
+  naijia: {
+    id: 'naijia', name: '奶蛙人', title: '隐藏角色 · 奶蛙人', color: '#ffd451',
+    tagline: '从奶蛙纪元裂缝爬出来的传说生物，徒手一拳一个小朋友。',
+    stats: '❤ 生命 999　🤜 徒手铁拳　✦ 数值怪',
+    perk: '被动：HP 999、一拳 500+ 伤害、攻速移速拉满、50% 暴击',
+    img: () => imgHeroNaijia, white: () => tintHeroNaijiaWhite, weaponId: 'fist',
+    maxHp: 999, ranged: false, spd: 1.5, crit: 0.5, atkSpeed: 2.0, dashCd: 0.5,
+    meleeBonus: 480, hidden: true
   }
 };
 let selectedHero = 'fish';
@@ -1338,6 +1389,16 @@ let rogueShopFromReward = false; // 关末奖励页主动进商店，买完回�
 // 分波制：一层拆成若干波，一波清空后才刷下一波；每波同屏怪数按层递增且硬上限 9 只
 let rogueWaveTotal = 0, rogueWaveIdx = 0, rogueWaveRemaining = 0, rogueWaveRoles = [];
 try { rogueBest = parseInt(localStorage.getItem('rogueBest') || '0', 10) || 0; } catch (e) {}
+// 隐藏角色奶蛙人：解锁后永久保存，重开页面仍可选
+let naijiaUnlocked = false;
+try {
+  if (localStorage.getItem('naijiaUnlocked') === '1') {
+    naijiaUnlocked = true;
+    ensureNaijiaAssets();
+    const njh = document.getElementById('naijiaHint');
+    if (njh) njh.classList.remove('hidden');
+  }
+} catch (e) {}
 
 /* ---------- 武器库：买到的武器永久保留，可在背包里随时切换装备 ---------- */
 const WEAPONS = {
@@ -1345,7 +1406,9 @@ const WEAPONS = {
   cig:      { name: '🚬 中南海星烟',   ranged: true  },
   miku:     { name: '🎤 初音未来玩偶', ranged: true  },
   pack:     { name: '📦 中南海烟盒',   ranged: false },
-  squirrel: { name: '🐿 吐弹松鼠',     ranged: true  }
+  squirrel: { name: '🐿 吐弹松鼠',     ranged: true  },
+  fist:     { name: '🤜 奶蛙铁拳',     ranged: false },
+  stick:    { name: '🔥 火星应援棒',   ranged: true  }
 };
 function weaponDesc(id) {
   const meleeB = (HEROES[player.hero] || HEROES.fish).meleeBonus || 0;
@@ -1354,6 +1417,8 @@ function weaponDesc(id) {
     case 'miku':     return '远程 · 按 J 甩大葱（伤害 ' + (30 + atkPower() + player.squirrelUp) + '，可暴击）';
     case 'pack':     return '近战 · 按 J 抡烟盒猛砸（伤害 ' + (20 + meleeB + atkPower()) + '，可暴击）';
     case 'squirrel': return '远程 · 按 J 吐子弹（伤害 ' + (22 + atkPower() + player.squirrelUp) + '）';
+    case 'fist':     return '近战 · 按 J 挥出奶蛙铁拳（伤害 ' + (20 + meleeB + atkPower()) + '，可暴击，命中框更大）';
+    case 'stick':    return '远程 · 按 J 发射火星光弹（伤害 ' + (26 + atkPower() + player.squirrelUp) + '，可暴击）';
     default:         return '近战 · 按 J 挥鞋劈砍（伤害 ' + (20 + meleeB + atkPower()) + '，可暴击）';
   }
 }
@@ -1385,6 +1450,7 @@ const SHOP_ITEMS = [
   { id: 'w-pack',    weapon: 'pack',     name: '📦 中南海烟盒',   desc: ph('近战武器 · 抡盒猛砸'),       price: 700 },
   { id: 'w-cig',     weapon: 'cig',      name: '🚬 中南海星烟',   desc: ph('远程武器 · 喷星系弹'),       price: 900 },
   { id: 'w-miku',    weapon: 'miku',     name: '🎤 初音未来玩偶', desc: ph('远程武器 · 甩大葱'),         price: 1100 },
+  { id: 'w-stick',   weapon: 'stick',    name: '🔥 火星应援棒',   desc: ph('远程武器 · 发射火星光弹'),   price: 800 },
   { id: 'heal',       name: '团子能量餐', desc: '回满 HP（进背包）',               price: 120, consumable: true },
   { id: 'potion',     name: '小红瓶',     desc: '回复 35 HP（进背包）',            price: 60,  consumable: true },
   { id: 'bigpotion',  name: '大奶瓶',     desc: '回复 80 HP（进背包）',            price: 200, consumable: true },
@@ -1884,7 +1950,7 @@ function tryAttack() {
     player.attackTimer = 0.26;
     player.attackCd = 0.30 / player.attackSpeed;
     player.comboStep = (player.comboStep + 1) % 3;
-    player.vx += player.attackDir * 130;
+    player.vx += player.attackDir * (player.weapon === 'fist' ? 220 : 130); // 铁拳前冲更猛
     beep(player.comboStep === 2 ? 260 : 400, 0.08, 'sawtooth', 0.05);
   }
 }
@@ -1893,19 +1959,20 @@ function firePlayerShot() {
   const p = player;
   const isCig = p.weapon === 'cig';
   const isMiku = p.weapon === 'miku';
-  p.attackCd = (isMiku ? 0.16 : (isCig ? 0.18 : 0.22)) / player.attackSpeed;
+  const isStick = p.weapon === 'stick';
+  p.attackCd = (isMiku ? 0.16 : (isStick ? 0.17 : (isCig ? 0.18 : 0.22))) / player.attackSpeed;
   p.shotTimer = 0.18;
   const dir = p.attackDir || p.facing;
   const bx = dir > 0 ? p.x + p.w + 4 : p.x - 26;
   const by = p.y + 34;
   pBullets.push({
-    x: bx, y: by, w: isMiku ? 34 : (isCig ? 28 : 24), h: isMiku ? 30 : (isCig ? 28 : 14),
-    vx: dir * (isMiku ? 620 : (isCig ? 660 : 580)), life: 1.7,
-    dmg: (isMiku ? 30 : (isCig ? 25 : 22)) + atkPower() + p.squirrelUp,
-    kind: isMiku ? 'scallion' : (isCig ? 'star' : 'milk'), r: 0
+    x: bx, y: by, w: isMiku ? 34 : (isStick ? 30 : (isCig ? 28 : 24)), h: isMiku ? 30 : (isStick ? 30 : (isCig ? 28 : 14)),
+    vx: dir * (isMiku ? 620 : (isStick ? 640 : (isCig ? 660 : 580))), life: 1.7,
+    dmg: (isMiku ? 30 : (isStick ? 26 : (isCig ? 25 : 22))) + atkPower() + p.squirrelUp,
+    kind: isMiku ? 'scallion' : (isStick ? 'mars' : (isCig ? 'star' : 'milk')), r: 0
   });
-  spawnParticles(bx + (p.facing > 0 ? 0 : 24), by + 7, isMiku ? 12 : (isCig ? 12 : 8), isMiku ? '#a8ff60' : (isCig ? '#ff9fd0' : '#ffd451'), 170);
-  beep(isMiku ? 1040 : (isCig ? 880 : 720), 0.07, 'triangle', 0.045);
+  spawnParticles(bx + (p.facing > 0 ? 0 : 24), by + 7, isMiku ? 12 : (isStick ? 14 : (isCig ? 12 : 8)), isMiku ? '#a8ff60' : (isStick ? '#ff5544' : (isCig ? '#ff9fd0' : '#ffd451')), 170);
+  beep(isMiku ? 1040 : (isStick ? 980 : (isCig ? 880 : 720)), 0.07, 'triangle', 0.045);
 }
 
 function fireBullet(e) {
@@ -2671,9 +2738,10 @@ function update(dt) {
     if (before > 0.13 && p.attackTimer <= 0.13) {
       // 用锁定的出招方向，且命中框向身后略微回包一点，快速转身贴身时也能打中
       const atkDir = p.attackDir || p.facing;
+      const fistMode = p.weapon === 'fist'; // 奶蛙铁拳：命中框更大更远
       const hb = {
-        x: atkDir > 0 ? p.x + p.w - 18 : p.x - 82,
-        y: p.y + 8, w: 100, h: 82
+        x: atkDir > 0 ? p.x + p.w - 18 : p.x - (fistMode ? 132 : 82),
+        y: p.y + (fistMode ? 0 : 8), w: fistMode ? 150 : 100, h: fistMode ? 104 : 82
       };
       let hit = false;
       bullets.slice().forEach(b => {
@@ -3365,6 +3433,27 @@ function drawPlayerBullets() {
       ctx.closePath(); ctx.fill();
       ctx.fillStyle = '#fff6cf';
       ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+    } else if (b.kind === 'mars') {
+      // 火星人的应援光弹：红色发光球 + 红光拖尾
+      b.r = (b.r || 0) + 0.3;
+      ctx.globalAlpha = 0.4; ctx.fillStyle = '#ff5544';
+      ctx.fillRect(b.x - Math.sign(b.vx) * 32, cy - 7, 32, 14);
+      ctx.globalAlpha = 0.85;
+      ctx.fillStyle = '#ff6b6b';
+      ctx.beginPath(); ctx.arc(cx, cy, 13, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.translate(cx, cy); ctx.rotate(b.r);
+      ctx.fillStyle = '#ff2e2e';
+      ctx.beginPath();
+      const R = 12, r2 = 5;
+      for (let i = 0; i < 10; i++) {
+        const a = i * Math.PI / 5;
+        const rad = i % 2 === 0 ? R : r2;
+        ctx.lineTo(Math.cos(a) * rad, Math.sin(a) * rad);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#ffe27a';
+      ctx.beginPath(); ctx.arc(0, 0, 4.5, 0, Math.PI * 2); ctx.fill();
     } else if (b.kind === 'scallion') {
       // 葱勇者的大葱飞弹：旋转大葱 + 葱香拖尾
       b.r = (b.r || 0) + (b.vx > 0 ? 0.22 : -0.22);
@@ -3495,6 +3584,54 @@ function drawPlayer() {
         ctx.scale(p.facing, 1);
         ctx.rotate(0.45);
         ctx.drawImage(imgWeaponPack, -14, -44, 46, 58);
+        ctx.restore();
+      }
+    }
+  } else if (p.weapon === 'fist') {
+    // 奶蛙人：徒手铁拳，出拳时画一只巨大的拳头砸出去
+    if (p.attackTimer > 0) {
+      const t = Math.min(1, 1 - p.attackTimer / 0.26);
+      const reach = Math.sin(t * Math.PI) * 52;
+      const fx = (p.facing > 0 ? p.x + p.w + 2 : p.x - 36) + p.facing * reach;
+      const fy = p.y + (p.comboStep === 2 ? 22 : 36) + bob;
+      ctx.save();
+      ctx.translate(fx + 17, fy + 17);
+      ctx.scale(p.facing, 1);
+      ctx.rotate(Math.sin(t * Math.PI) * 0.35);
+      ctx.fillStyle = '#ffd451'; ctx.strokeStyle = '#3a2c12'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(0, 0, 17, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#f0b429'; // 拳峰指节
+      ctx.beginPath(); ctx.arc(7, -6, 5, 0, Math.PI * 2); ctx.arc(11, 3, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.55;
+      ctx.strokeStyle = p.comboStep === 2 ? '#ff9f43' : '#fff2b0';
+      ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(6, 0, 26, -1.15, 1.15); ctx.stroke(); // 冲击弧
+      ctx.restore();
+    }
+  } else if (p.weapon === 'stick') {
+    // 火星人：高举红色应援棒，射击时棒身抖动、发光球脉冲闪烁
+    if (imgWeaponStick.complete && imgWeaponStick.width > 0) {
+      const shooting = p.shotTimer > 0;
+      const kick = shooting ? Math.sin((1 - p.shotTimer / 0.18) * Math.PI) * 8 : 0;
+      const pulse = 0.75 + Math.sin(gameTime * 5) * 0.25;
+      const sx = (p.facing > 0 ? p.x + p.w + 4 : p.x - 4) + p.facing * kick;
+      const sy = p.y + 56 + bob;
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.scale(p.facing, 1);
+      ctx.rotate(shooting ? -0.32 : -0.12 + Math.sin(gameTime * 2.2) * 0.06);
+      ctx.shadowColor = '#ff2e2e';
+      ctx.shadowBlur = 9 * pulse;
+      ctx.drawImage(imgWeaponStick, -12, -62, 24, 62);
+      ctx.restore();
+      if (shooting) {
+        ctx.save();
+        ctx.globalAlpha = 0.85; ctx.fillStyle = '#ff5544';
+        const ex = p.facing > 0 ? p.x + p.w + 12 : p.x - 12;
+        for (let i = 0; i < 6; i++) {
+          const a = gameTime * 9 + i * 1.05;
+          ctx.beginPath(); ctx.arc(ex + Math.cos(a) * 9, sy - 54 + Math.sin(a) * 9, 2.6, 0, Math.PI * 2); ctx.fill();
+        }
         ctx.restore();
       }
     }
@@ -3741,7 +3878,7 @@ function drawHUD() {
   } else {
     ctx.fillStyle = '#9fb6d8';
     const heroTag = player.hero === 'girl' ? '🚬洋夫' : (player.hero === 'miku' ? '🌱葱勇者' : (player.hero === 'scarf' ? '🧣烟客' : '🐟腌鱼'));
-    const wTag = player.weapon === 'cig' ? '星烟' : (player.weapon === 'miku' ? '初音' : (player.weapon === 'pack' ? '烟盒' : (player.weapon === 'squirrel' ? '松鼠' : '皮鞋')));
+    const wTag = player.weapon === 'cig' ? '星烟' : (player.weapon === 'miku' ? '初音' : (player.weapon === 'pack' ? '烟盒' : (player.weapon === 'squirrel' ? '松鼠' : (player.weapon === 'fist' ? '铁拳' : (player.weapon === 'stick' ? '应援' : '皮鞋')))));
     const aliveCnt = enemies.filter(e => !e.dead).length;
     const rogueTail = rogueBossFloor ? ('守关BOSS · 剩 ' + aliveCnt + ' 只')
       : (rogueShopFloor ? '补给站 · 逛商店'
@@ -4058,10 +4195,13 @@ function loop(ts) {
 
 function renderHeroSelect() {
   heroGridEl.innerHTML = '';
-  Object.values(HEROES).forEach(h => {
-    const imgSrc = h.id === 'fish' ? 'assets/hero.png' : (h.id === 'girl' ? 'assets/hero-girl.png' : (h.id === 'miku' ? 'assets/hero-miku-boy.png' : 'assets/hero-scarf.png'));
+  Object.values(HEROES)
+    .filter(h => !h.hidden || naijiaUnlocked) // 隐藏角色未解锁不显示
+    .forEach(h => {
+    const imgSrc = h.id === 'fish' ? 'assets/hero.png' : (h.id === 'girl' ? 'assets/hero-girl.png'
+      : (h.id === 'miku' ? 'assets/hero-miku-boy.png' : (h.id === 'scarf' ? 'assets/hero-scarf.png' : (h.id === 'mars' ? 'assets/hero-mars.png' : 'assets/hero-naijia.png'))));
     const card = document.createElement('div');
-    card.className = 'hero-card' + (selectedHero === h.id ? ' selected' : '');
+    card.className = 'hero-card' + (selectedHero === h.id ? ' selected' : '') + (h.hidden ? ' hc-secret' : '');
     card.innerHTML =
       (selectedHero === h.id ? '<div class="hc-badge">✓ 当前选择</div>' : '') +
       '<div class="hc-portrait"><img src="' + imgSrc + '" alt="' + h.name + '"></div>' +
@@ -4446,9 +4586,11 @@ document.addEventListener('touchmove', e => {
 }, { passive: false });
 
 /* ---------- 版本号：统一由 GAME_VERSION 驱动 ---------- */
-document.title = '腌鱼勇者 · 奶蛙纪元 v' + GAME_VERSION;
+document.title = '腌鱼勇者 · 奶蛙纪元 v' + GAME_VERSION + ' ' + GAME_EDITION;
 const verNumEl = document.getElementById('verNum');
 if (verNumEl) verNumEl.textContent = GAME_VERSION;
+const verEditionEl = document.getElementById('verEdition');
+if (verEditionEl) verEditionEl.textContent = GAME_EDITION;
 
 requestAnimationFrame(loop);
 </script>
