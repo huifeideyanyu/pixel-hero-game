@@ -761,9 +761,9 @@ const STAGE_MOBS = [
 const imgMobs = {}, tintMobs = {};
 STAGE_MOBS.forEach(list => list.forEach(m => {
   const img = new Image();
+  img.decoding = 'async';
   img.onload = () => { try { tintMobs[m.key] = makeTint(img, '#ff5544'); } catch (e) {} };
-  img.src = 'assets/mob-' + m.key + '.png';
-  imgMobs[m.key] = img;
+  imgMobs[m.key] = img;   // src 延迟到进入闯关模式时才设置，避免开页抢带宽
 }));
 function mobDefFor(stageIdx, role) {
   const list = STAGE_MOBS[Math.max(0, Math.min(STAGE_MOBS.length - 1, stageIdx))];
@@ -792,6 +792,7 @@ let tintBossGeneralRed = null, tintBossSaltRed = null, tintBossJarRed = null, ti
 let bgPattern = null, arenaPattern = null;
 
 function makeTint(img, color) {
+  if (!img || !img.complete || !img.naturalWidth) return null; // 贴图未就绪时跳过，避免 0 尺寸画布
   const c = document.createElement('canvas');
   c.width = img.width; c.height = img.height;
   const x = c.getContext('2d');
@@ -802,6 +803,7 @@ function makeTint(img, color) {
   return c;
 }
 function makeOverlayTint(img, color, alpha) {
+  if (!img || !img.complete || !img.naturalWidth) return null;
   const c = document.createElement('canvas');
   c.width = img.width; c.height = img.height;
   const x = c.getContext('2d');
@@ -816,6 +818,7 @@ function makeOverlayTint(img, color, alpha) {
 let ready = false;
 let arrived = 0;
 function buildBgPattern() {
+  if (!imgBg.complete || !imgBg.width) return;
   const c = document.createElement('canvas');
   const sy = Math.round(imgBg.height * 0.78);
   const sh = Math.round(imgBg.height * 0.13);
@@ -826,6 +829,7 @@ function buildBgPattern() {
   bgPattern = ctx.createPattern(c, 'repeat');
 }
 function buildArenaPattern() {
+  if (!imgArenaBg.complete || !imgArenaBg.width) return;
   const c = document.createElement('canvas');
   const sy = Math.round(imgArenaBg.height * 0.86);
   const sh = Math.round(imgArenaBg.height * 0.11);
@@ -889,6 +893,24 @@ imgEnemyCrystal.onload = onAsset;
 imgEnemyAsh.onload = onAsset;
 imgBg.onload = onAsset;
 imgArenaBg.onload = onAsset;
+// 首屏健壮性：异步解码减少主线程阻塞、任一图加载失败也计数、极慢网络 3.5 秒强制放行
+[
+  imgHero, imgHeroGirl, imgHeroMiku, imgWeaponMiku, imgHeroScarf, imgWeaponPack,
+  imgScallion, imgWeaponCig, imgEnemy, imgBoss, imgWeapon, imgMerchant,
+  imgSquirrel, imgRanged, imgNpcZhimin, imgNpcLusi, imgElite, imgBossGeneral,
+  imgBossSalt, imgBossJar, imgBossBlob, imgBossTurtle, imgBossKimono, imgAltar,
+  imgEnemyCrystal, imgEnemyAsh, imgBg, imgArenaBg
+].forEach(im => { im.decoding = 'async'; im.onerror = onAssetFail; });
+function onAssetFail() { onAsset(); }
+let assetFallbackDone = false;
+function forceAssetsReady() {
+  if (ready || assetFallbackDone) return;
+  assetFallbackDone = true;
+  try { buildBgPattern(); buildArenaPattern(); } catch (e) {}
+  ready = true;
+  drawTitleScene();
+}
+setTimeout(forceAssetsReady, 3500);
 imgHero.src = 'assets/hero.png';
 imgHeroGirl.src = 'assets/hero-girl.png';
 imgHeroMiku.src = 'assets/hero-miku-boy.png';
@@ -918,9 +940,17 @@ imgEnemyAsh.src = 'assets/enemy-ash.png';
 imgBg.src = 'assets/bg.png';
 imgArenaBg.src = 'assets/arena-bg.png';
 STAGE_BGS.forEach((s, i) => {
+  imgStageBgs[i].decoding = 'async';
   imgStageBgs[i].onload = () => buildStagePattern(i);
-  imgStageBgs[i].src = 'assets/stage-' + s.key + '.png';
 });
+// 闯关专属素材（5 张主题背景 + 15 张主题怪）按需加载：标题页与普通模式完全不下载
+let rogueAssetsLoaded = false;
+function ensureRogueAssets() {
+  if (rogueAssetsLoaded) return;
+  rogueAssetsLoaded = true;
+  STAGE_BGS.forEach((s, i) => { imgStageBgs[i].src = 'assets/stage-' + s.key + '.png'; });
+  STAGE_MOBS.forEach(list => list.forEach(m => { imgMobs[m.key].src = 'assets/mob-' + m.key + '.png'; }));
+}
 
 /* ================= 世界观剧情 ================= */
 function getPrologue() {
@@ -1064,7 +1094,9 @@ let audioCtx = null, muted = false;
 // 背景音乐：默认关闭。仅当在标题画面按魂斗罗秘籍顺序输入 Z Y Y N B 后解锁播放。
 let musicOn = false;
 let godMode = false; // 无敌模式（锁血），默认关闭，可用主菜单按钮或 G 键切换
-const bgm = new Audio('assets/music.mp3');
+// BGM 延迟加载：开页不预拉 7MB 音乐，只有输入秘籍解锁时才开始下载（手机首屏尤其明显）
+const bgm = new Audio();
+bgm.preload = 'none';
 bgm.loop = true;
 bgm.volume = 0.38;
 let bgmWanted = false; // 是否处于「应播放」状态（含被自动播放策略拦截时）
@@ -1086,6 +1118,7 @@ function checkSecret(k) {
     secretProgress++;
     if (secretProgress === SECRET_CODE.length) {
       bgmUnlocked = true;
+      if (!bgm.src) bgm.src = 'assets/music.mp3'; // 解锁瞬间才下载音频
       musicOn = true;
       audioCtxResume();
       syncBgm();
@@ -3357,6 +3390,9 @@ function drawPlayerBullets() {
   });
 }
 function drawSprite(img, x, y, w, h, facing, tinted, alpha) {
+  // 懒加载贴图未就绪或加载失败时本帧跳过，避免 drawImage 抛错卡住整个绘制
+  if (img && img.complete === false) return;
+  if (img && img.complete === true && img.naturalWidth === 0) return;
   ctx.save();
   ctx.globalAlpha = alpha == null ? 1 : alpha;
   ctx.translate(x + w / 2, y + h / 2);
@@ -4083,6 +4119,7 @@ function rogueWaveRolesFor(size) {
 }
 
 function startRogue() {
+  ensureRogueAssets(); // 进入闯关模式才开始下载主题背景与主题怪贴图
   resetGame();
   rogueMode = true; arenaMode = true; bossRage = false;
   rogueFloor = 0; rogueShopFloor = false; rogueRewardOpen = false; rogueWaveActive = false; roguePerkCount = 0;
