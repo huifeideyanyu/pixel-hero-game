@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>腌鱼勇者 · 奶蛙纪元</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🐟</text></svg>">
 <style>
   * { box-sizing: border-box; }
   html, body {
@@ -56,6 +57,47 @@
     color: #fffbe6;
   }
   .btn.god-toggle.on:hover { box-shadow: 6px 6px 0 #7a5c12; }
+  /* hero selection */
+  #heroSelectScreen { justify-content: flex-start; overflow-y: auto; padding: 14px 0; z-index: 6; }
+  #heroSelectScreen h1 { font-size: clamp(24px, 4vw, 40px); margin: 0 0 2px; }
+  #heroSelectScreen .sub { margin-bottom: 12px; }
+  .hero-grid {
+    display: flex; gap: 18px; flex-wrap: wrap; justify-content: center;
+    width: min(820px, 94vw); margin: 0 auto; flex: 0 0 auto;
+  }
+  .hero-card {
+    width: min(340px, 90vw); background: #1b2747; border: 4px solid #5c78b0;
+    border-radius: 12px; padding: 14px 16px 16px; cursor: pointer; color: #fff;
+    box-shadow: 5px 5px 0 #0e1630; transition: transform .12s, border-color .12s;
+    position: relative; text-align: center;
+  }
+  .hero-card:hover { transform: translateY(-4px); }
+  .hero-card.selected { border-color: #ffd451; box-shadow: 5px 5px 0 #a35c14, 0 0 22px rgba(255,212,81,.35); }
+  .hero-card .hc-badge {
+    position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+    background: #ffd451; color: #3a2400; font-size: 13px; font-weight: bold;
+    padding: 3px 14px; border-radius: 10px; border: 2px solid #fff; white-space: nowrap;
+  }
+  .hero-card .hc-portrait {
+    height: 190px; display: flex; align-items: flex-end; justify-content: center;
+    background: radial-gradient(circle at 50% 40%, rgba(120,160,230,.18), transparent 70%);
+    border-radius: 8px; margin-bottom: 8px;
+  }
+  .hero-card .hc-portrait img { height: 180px; image-rendering: pixelated; filter: drop-shadow(0 6px 6px rgba(0,0,0,.45)); }
+  .hero-card .hc-name { font-size: clamp(18px, 2.4vw, 24px); font-weight: bold; color: #ffd451; letter-spacing: 2px; }
+  .hero-card .hc-title { font-size: 13px; color: #b9cdf0; margin: 2px 0 6px; }
+  .hero-card .hc-tag { font-size: 13px; color: #eaf2ff; min-height: 2.6em; line-height: 1.4; }
+  .hero-card .hc-stats { font-size: 13px; margin: 8px 0 4px; font-weight: bold; }
+  .hero-card .hc-perk {
+    font-size: 12px; color: #ffd451; background: #121d38; border: 1px solid #3a5080;
+    border-radius: 6px; padding: 5px 8px; margin-top: 4px;
+  }
+  .hero-card .hc-btn {
+    display: inline-block; margin-top: 10px; font-size: 14px; font-weight: bold;
+    color: #1b2338; background: #8fd3ff; border: 2px solid #fff; border-radius: 5px;
+    padding: 5px 18px;
+  }
+  .hero-card.selected .hc-btn { background: #ffd451; }
   .secret-hint {
     margin-top: 16px; font-size: clamp(13px, 1.7vw, 17px); font-weight: bold;
     color: #ffd451; letter-spacing: 2px; text-shadow: 0 0 12px rgba(255,212,81,.7);
@@ -98,6 +140,21 @@
   #bagScreen { justify-content: flex-start; overflow-y: auto; padding: 16px 0; }
   #bagScreen h1 { margin: 0 0 4px; }
   #bagScreen .sub { margin-bottom: 8px; }
+  #teleportScreen { justify-content: flex-start; overflow-y: auto; padding: 16px 0; }
+  #teleportScreen h1 { margin: 0 0 4px; }
+  #teleportScreen .sub { margin-bottom: 12px; }
+  .teleport-grid {
+    display: grid; grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 8px; width: min(680px, 92vw); max-width: 92vw; margin: 0 auto; flex: 0 0 auto;
+  }
+  .teleport-item {
+    background: #2f6fb0; border: 3px solid #cfe3ff; border-radius: 6px;
+    padding: 7px 8px; cursor: pointer; font-weight: bold; color: #fff; font-size: 15px;
+    box-shadow: 3px 3px 0 #1b4675; transition: transform .1s;
+  }
+  .teleport-item:hover { transform: translate(-2px,-2px); box-shadow: 5px 5px 0 #1b4675; }
+  .teleport-item .lv { display:block; font-size: 12px; color: #cfe3ff; margin-top: 4px; font-weight: normal; }
+  .teleport-item.here { background:#6a4fa8; border-color:#e6d4ff; box-shadow:3px 3px 0 #3d2d6b; }
   .bag-section {
     width: min(640px, 92%); text-align: left; margin: 12px 0 4px;
     font-size: 15px; font-weight: bold; color: #8fd3ff; letter-spacing: 2px;
@@ -157,8 +214,9 @@
   <canvas id="game" width="960" height="540"></canvas>
 
   <div id="startScreen" class="screen">
-    <h1>腌鱼勇者</h1>
-    <div class="sub">奶蛙纪元 · 一条咸鱼的离奇复仇</div>
+    <h1>腌鱼勇者 · 奶蛙纪元</h1>
+    <div class="sub">杂鱼翻身，奶蛙称王——选个主角，杀出缸去</div>
+    <button class="btn" id="heroSelectBtn">⚔ 选择主角</button>
     <button class="btn" id="startBtn">开始冒险</button>
     <button class="btn god-toggle" id="godBtn">🛡 无敌模式：关</button>
     <div id="secretHint" class="secret-hint hidden">♫ 隐藏 BGM 已解锁</div>
@@ -167,13 +225,20 @@
       <span class="key">K</span> 跳跃（按住更高·轻按更矮·可多段）　
       <span class="key">J</span>/点击 攻击（可劈子弹）　<br>
       <span class="key">U</span> 必杀　<span class="key">L</span> 冲刺　
-      <span class="key">F</span> 交易 / 召唤袁英　<br>
-      <span class="key">M</span> 地图　<span class="key">B</span> 背包　
-      <span class="key">N</span> 静音　<span class="key">P</span> 暂停<br>
-      地图向左右与高空开放：往左是「咸鱼起源·左岸」，往右直到袁英王座；
-      起点上空有云梯可爬到「云端浮岛」藏有大奖。<br>
-      探索七片区域，集齐 <b>5 块暗影碎片</b>，击败精英怪拿到 <b>汤勺</b>，去最右祭坛召唤最终 BOSS「袁英」。
+      <span class="key">F</span> 交易 / 开宝箱 / 召唤袁英　<br>
+      <span class="key">T</span> 传送网络　<span class="key">M</span> 地图　<span class="key">B</span> 背包　
+      <span class="key">G</span> 无敌　<span class="key">N</span> 静音　<span class="key">P</span> 暂停<br>
+      地图向左右与高空开放：最左「深渊源头」→ 左岸 → 王座 → 「圣泉回廊」祭坛，起点上空云梯通向「云端浮岛」。<br>
+      <b>按 T 打开传送网络</b>，九大片区域瞬间往返；留意路边的树、蘑菇、腌菜缸与宝箱，靠近按 F 开箱拿奖励。<br>
+      集齐 <b>5 块暗影碎片</b> + 击败精英怪拿到 <b>汤勺</b>，去最右祭坛召唤最终 BOSS「袁英」。
     </div>
+  </div>
+
+  <div id="heroSelectScreen" class="screen hidden">
+    <h1>选择你的主角</h1>
+    <div class="sub">两位勇者，两种流派——选一个去闯奶蛙大陆</div>
+    <div class="hero-grid" id="heroGrid"></div>
+    <button class="btn" id="heroBackBtn" style="margin-top:18px">返回 (Esc)</button>
   </div>
 
   <div id="overScreen" class="screen hidden">
@@ -210,6 +275,13 @@
     <button class="btn" id="bagCloseBtn" style="margin-top:16px">关闭背包 (B)</button>
   </div>
 
+  <div id="teleportScreen" class="screen hidden">
+    <h1 style="font-size:clamp(26px,4vw,44px)">腌香传送网络</h1>
+    <div class="sub">点选地点瞬间抵达 · 按 T 关闭 · 空中浮岛也能直达</div>
+    <div id="teleportList" class="teleport-grid"></div>
+    <button class="btn" id="teleportCloseBtn" style="margin-top:16px;flex:0 0 auto">关闭 (T)</button>
+  </div>
+
   <div id="storyScreen" class="screen hidden">
     <div id="storyBox">
       <div id="storyWho">旁白</div>
@@ -243,18 +315,23 @@ const W = 960, H = 540, GROUND = 440;
 const SKY_TOP = -560; // 天空区域顶部（世界坐标 y，向上为负）
 /* 区域按 x 从左到右排列，第一个区域可以向左延伸（WORLD_L < 0）。
    等级相邻差距 ≤ 10；左侧新增「云端/起源」低等级区，Boss 固定 100 级。 */
+/* 地图扩展采用「平移拼接」：左右各拼一个新区域，原有所有硬编码坐标保持不动。
+   新左区宽度 EXTRA_LEFT 使后续区域边界恰好仍从 -1500 开始，祭坛按 WORLD_R 自动右移。 */
+const EXTRA_LEFT = 1200, EXTRA_RIGHT = 1000;
 const AREA_DEFS = [
+  { name: '深渊·腌鱼溯源', w: EXTRA_LEFT, lv: 2,  hint: '深渊源头。你被腌的第一缸盐水就从这里流出，奶蛙小得几乎看不见——但它们依然会吐你一脸。' },
   { name: '咸鱼起源·左岸', w: 1500, lv: 6,  hint: '左岸。腌鱼被冲上岸的起点，这里的奶蛙等级最低，适合找找手感。往右才是大陆腹地，抬头看看——云上还有一片浮空地。' },
   { name: '新手草原', w: 1350, lv: 10, hint: '新手草原。这里的奶蛙还挺有礼貌，喷奶前会说「打扰了」。' },
   { name: '甜菜峡谷', w: 1000, lv: 18, hint: '甜菜峡谷。智敏说这里的甜菜是袁英年轻时种下的，她当年还想开一家甜菜汤馆。' },
   { name: '蘑菇高地', w: 1200, lv: 26, hint: '蘑菇高地。露思就住在山坡上，她踩过的蘑菇至今还在弹跳——那是她的恶作剧。' },
   { name: '腌渍沼泽', w: 900,  lv: 34, hint: '腌渍沼泽。恭喜，你现在是一条在野外泡盐水的咸鱼。' },
   { name: '暗影腌缸', w: 1150, lv: 42, hint: '暗影腌缸。这里每一口呼吸，都是三年封坛的老味道。' },
-  { name: '袁英王座', w: 850,  lv: 50, hint: '袁英王座。她就在前面，正一边喝汤一边嫌弃你身上的味儿。' }
+  { name: '袁英王座', w: 850,  lv: 50, hint: '袁英王座。她就在前面，正一边喝汤一边嫌弃你身上的味儿。' },
+  { name: '圣泉回廊', w: EXTRA_RIGHT, lv: 56, hint: '圣泉回廊。尽头的祭坛泡着最后一缸圣泉，袁英就在那里等你——先按 T 看看传送网络，来回跑不用再靠脚了。' }
 ];
 const AREAS = AREA_DEFS.map(a => a.name);
 const AREA_STORY = AREA_DEFS.map(a => a.hint);
-const WORLD_L = -1500; // 左岸起点，地图向左开放
+const WORLD_L = -1500 - EXTRA_LEFT; // 最左端，深渊源头起点；原左岸仍从 -1500 起
 const WORLD_W = AREA_DEFS.reduce((s, a) => s + a.w, 0);
 const WORLD_R = WORLD_L + WORLD_W;
 // AREA_X[i] 为第 i 个区域左边界，最后一个为世界右边界
@@ -285,8 +362,14 @@ const shopItemsEl = document.getElementById('shopItems');
 const shopCoinsEl = document.getElementById('shopCoins');
 const bagScreen = document.getElementById('bagScreen');
 const bagContentEl = document.getElementById('bagContent');
+const teleportScreen = document.getElementById('teleportScreen');
+const teleportListEl = document.getElementById('teleportList');
+const heroSelectScreen = document.getElementById('heroSelectScreen');
+const heroGridEl = document.getElementById('heroGrid');
 
 const imgHero = new Image();
+const imgHeroGirl = new Image();
+const imgWeaponCig = new Image();
 const imgEnemy = new Image();
 const imgBoss = new Image();
 const imgWeapon = new Image();
@@ -298,7 +381,14 @@ const imgNpcLusi = new Image();
 const imgElite = new Image();
 const imgBg = new Image();
 const imgArenaBg = new Image();
-let tintHeroWhite = null, tintEnemyRed = null, tintBossRed = null, tintRangedRed = null, tintEliteRed = null;
+// 场景装饰贴图（8 种），不参与素材计数，加载完自然显示
+const DECOR_NAMES = ['tree', 'rock', 'mushroom', 'flowers', 'picklejar', 'sign', 'lantern', 'chest'];
+const imgDecor = {};
+DECOR_NAMES.forEach(n => {
+  imgDecor[n] = new Image();
+  imgDecor[n].src = 'assets/decor-' + n + '.png';
+});
+let tintHeroWhite = null, tintHeroGirlWhite = null, tintEnemyRed = null, tintBossRed = null, tintRangedRed = null, tintEliteRed = null, tintEnemyGold = null;
 let bgPattern = null, arenaPattern = null;
 
 function makeTint(img, color) {
@@ -347,12 +437,14 @@ function buildArenaPattern() {
 }
 function onAsset() {
   arrived++;
-  if (arrived >= 12) {
+  if (arrived >= 14) {
     tintHeroWhite = makeTint(imgHero, '#ffffff');
+    tintHeroGirlWhite = makeTint(imgHeroGirl, '#ffffff');
     tintEnemyRed = makeTint(imgEnemy, '#ff5544');
     tintBossRed = makeTint(imgBoss, '#ff5544');
     tintRangedRed = makeTint(imgRanged, '#ff5544');
     tintEliteRed = makeTint(imgElite, '#ff5544');
+    tintEnemyGold = makeOverlayTint(imgEnemy, '#ffd21a', 0.78);
     buildBgPattern();
     buildArenaPattern();
     ready = true;
@@ -360,6 +452,8 @@ function onAsset() {
   }
 }
 imgHero.onload = onAsset;
+imgHeroGirl.onload = onAsset;
+imgWeaponCig.onload = onAsset;
 imgEnemy.onload = onAsset;
 imgBoss.onload = onAsset;
 imgWeapon.onload = onAsset;
@@ -372,6 +466,8 @@ imgElite.onload = onAsset;
 imgBg.onload = onAsset;
 imgArenaBg.onload = onAsset;
 imgHero.src = 'assets/hero.png';
+imgHeroGirl.src = 'assets/hero-girl.png';
+imgWeaponCig.src = 'assets/weapon-cig.png';
 imgEnemy.src = 'assets/enemy.png';
 imgBoss.src = 'assets/boss.png';
 imgWeapon.src = 'assets/weapon.png';
@@ -385,10 +481,20 @@ imgBg.src = 'assets/bg.png';
 imgArenaBg.src = 'assets/arena-bg.png';
 
 /* ================= 世界观剧情 ================= */
-const PROLOGUE = [
-  { who: '旁白', text: '腌鱼历一七四三年。你是一条被腌了三百年的鱼。' },
-  { who: '旁白', text: '是的，三百年。直到昨天，一缕月光钻进腌菜缸——你，活了。' },
-  { who: '腌鱼', text: '（吐出一口老坛酸水）我这是……咸鱼翻身了？' },
+function getPrologue() {
+  const H = HEROES[selectedHero] || HEROES.fish;
+  const isGirl = H.id === 'girl';
+  const name = H.name;
+  const weaponLine = isGirl
+    ? '你的武器是一盒中南海星烟——喷出来的不是烟，是星系弹。'
+    : '你的武器是一只鞋，和一只会吐子弹的松鼠。';
+  const endLine = isGirl
+    ? '（点燃一支星烟）……这世界终于疯得合我胃口了。'
+    : '（举起鞋）……这世界终于疯了。';
+  return [
+  { who: '旁白', text: isGirl ? '腌鱼历一七四三年。一个把星系装进烟盒的女孩，路过了这片大陆。' : '腌鱼历一七四三年。你是一条被腌了三百年的鱼。' },
+  { who: '旁白', text: isGirl ? '她叫洋夫。据说她抽的烟，能吐出真星星。' : '是的，三百年。直到昨天，一缕月光钻进腌菜缸——你，活了。' },
+  { who: name, text: isGirl ? '（吐出一口星尘）这地方……闻着有点酸。' : '（吐出一口老坛酸水）我这是……咸鱼翻身了？' },
   { who: '旁白', text: '你被海浪冲上最西边的「咸鱼起源·左岸」。从这里往右是整片大陆，往上是云。' },
   { who: '旁白', text: '地图上还藏着一片「云端浮岛」——据说腌鱼的祖先在那儿煮过一锅汤。' },
   { who: '旁白', text: '大陆上住着奶蛙一族：圆滚滚、会产奶、温顺得不像话。' },
@@ -402,10 +508,11 @@ const PROLOGUE = [
   { who: '旁白', text: '路上你会遇到两个人：戴眼镜的学者智敏，和蹦蹦跳跳的露思。' },
   { who: '智敏', text: '（远远挥手）样本！记得升级！现在的奶蛙都按区域分了等级！' },
   { who: '露思', text: '（挥手）前面Lv.10的奶蛙很温柔的，加油哦！' },
-  { who: '腌鱼', text: '所以我的使命，是捡破烂，再打一只巨型奶蛙？' },
-  { who: '旁白', text: '没错。顺便一提：你的武器是一只鞋，和一只会吐子弹的松鼠。' },
-  { who: '腌鱼', text: '……这世界终于疯了。（举起鞋）' }
-];
+  { who: name, text: '所以我的使命，是捡破烂，再打一只巨型奶蛙？' },
+  { who: '旁白', text: '没错。顺便一提：' + weaponLine },
+  { who: name, text: endLine }
+  ];
+}
 const SHOP_STORY = [
   { who: '？？？', text: '站住！那条……会走路的咸鱼！' },
   { who: '蛙掌柜', text: '别怕别怕，我是好人。我只是一只被家族开除的奶蛙。' },
@@ -588,7 +695,10 @@ window.addEventListener('keydown', e => {
   // 标题画面秘籍输入：Z Y Y N B 解锁隐藏 BGM（按住不重复触发）
   if (!keys[k]) checkSecret(k);
   // 标题画面只处理秘籍，避免 N（静音）/B（背包）等键产生副作用
-  if (state === 'start') { keys[k] = true; return; }
+  if (state === 'start') {
+    if (!heroSelectScreen.classList.contains('hidden') && k === 'escape' && !keys[k]) closeHeroSelect();
+    keys[k] = true; return;
+  }
 
   if (storyActive) {
     if (['j', 'z', ' ', 'enter', 'f', 'k', 'm', 'b', 'n', 'p', 'u', 'l', 'escape'].indexOf(k) >= 0 && !keys[k]) advanceStory();
@@ -604,8 +714,9 @@ window.addEventListener('keydown', e => {
   }
   if (k === 'm' && !keys[k]) toggleMap();
   if (k === 'b' && !keys[k]) toggleBag();
+  if (k === 't' && !keys[k]) toggleTeleport();
   if (k === 'g' && !keys[k]) toggleGodMode();
-  if (k === 'escape') { if (mapOpen) mapOpen = false; else if (bagOpen) closeBag(); }
+  if (k === 'escape') { if (mapOpen) mapOpen = false; else if (bagOpen) closeBag(); else if (teleportOpen) { teleportOpen = false; teleportScreen.classList.add('hidden'); } }
   if (k === 'k' && !keys[k]) jumpBuffer = 0.16;
   keys[k] = true;
   if ((k === 'k') && state === 'playing') jumpHeld = true;
@@ -654,12 +765,33 @@ document.querySelectorAll('.mbtn').forEach(btn => {
   btn.addEventListener('pointerleave', off);
 });
 
+/* ---------- 可选主角定义 ---------- */
+const HEROES = {
+  fish: {
+    id: 'fish', name: '腌鱼', title: '咸鱼勇者', color: '#8fd3ff',
+    tagline: '泡了三百年的老坛咸鱼，近战挥鞋，皮糙肉厚。',
+    stats: '❤ 生命 100　⚔ 近战挥鞋　✦ 均衡型',
+    perk: '被动：生命上限更高，近战三段连击',
+    img: () => imgHero, white: () => tintHeroWhite, weaponId: 'shoe',
+    maxHp: 100, ranged: false, spd: 1, crit: 0, atkSpeed: 1, dashCd: 1.35
+  },
+  girl: {
+    id: 'girl', name: '洋夫', title: '星烟使 · 洋夫', color: '#ff9fd0',
+    tagline: '手持星系香烟的酷女孩，远程吐弹，暴击流。',
+    stats: '❤ 生命 85　⚔ 远程星弹　✦ 暴击流',
+    perk: '被动：20% 暴击率、攻速更快、冲刺冷却更短',
+    img: () => imgHeroGirl, white: () => tintHeroGirlWhite, weaponId: 'cig',
+    maxHp: 85, ranged: true, spd: 1.12, crit: 0.2, atkSpeed: 1.25, dashCd: 1.0
+  }
+};
+let selectedHero = 'fish';
+
 /* ---------- game state ---------- */
 let state = 'start';
 let player, enemies, particles, texts, shocks, pickups, platforms, bullets, pBullets;
 let score, wave, combo, comboTimer, waveQuota, spawnTimer, spawnGap;
 let waveBanner, shake, flash, gameTime, hitStop, areaBanner, subtitle, subtitleT;
-let shopOpen = false, mapOpen = false, bagOpen = false, atkBonus = 0;
+let shopOpen = false, mapOpen = false, bagOpen = false, teleportOpen = false, atkBonus = 0;
 let shopStorySeen = false, prologueSeen = false;
 let arenaMode = false, bossRage = false; // 竞技场模式 / BOSS狂暴阶段
 
@@ -731,21 +863,79 @@ const FRAG_POS = [
   { x: 1160, y: 280 }, { x: 2120, y: 280 }, { x: 3000, y: 280 },
   { x: 4260, y: 280 }, { x: 5300, y: 280 }
 ];
-const ORB_X = [-1320,-1080,-820,-560,-300,-80, 360, 700, 1040, 1420, 1780, 2160, 2520, 2880, 3260, 3620, 4000, 4420, 4820, 5200, 5640, 6060, 6340];
+const ORB_X = [-2520,-2320,-2120,-1920,-1720,-1320,-1080,-820,-560,-300,-80, 360, 700, 1040, 1420, 1780, 2160, 2520, 2880, 3260, 3620, 4000, 4420, 4820, 5200, 5640, 6060, 6340, 6600, 6900, 7200];
 // 云端浮岛上的奖励（大能量水晶 + 分数）
 const SKY_REWARD = { x: 470, y: -378, type: 'orb' };
 
+/* 场景装饰：按区域风格把 8 种贴图铺到地面（纯背景，不参与碰撞）。
+   n=贴图名, x=世界坐标, s=缩放, y=基准(默认 GROUND)。 */
+const DECOR_DATA = [
+  // 深渊源头（lv2，幽暗，石头/腌菜缸/灯笼）
+  { n:'rock',x:-2560,s:1.0 },{ n:'picklejar',x:-2400,s:0.9 },{ n:'lantern',x:-2260,s:1.0 },
+  { n:'rock',x:-2100,s:1.2 },{ n:'mushroom',x:-1960,s:0.9 },{ n:'lantern',x:-1800,s:1.0 },
+  { n:'picklejar',x:-1660,s:0.85 },{ n:'rock',x:-1540,s:0.9 },
+  // 左岸（树/花/石头）
+  { n:'tree',x:-1400,s:1.1 },{ n:'flowers',x:-1240,s:0.8 },{ n:'rock',x:-1120,s:0.9 },
+  { n:'tree',x:-940,s:1.2 },{ n:'flowers',x:-760,s:0.85 },{ n:'mushroom',x:-620,s:0.8 },
+  { n:'tree',x:-440,s:1.0 },{ n:'sign',x:-260,s:0.9 },{ n:'flowers',x:-120,s:0.8 },
+  // 新手草原（树/花/路牌/宝箱）
+  { n:'tree',x:200,s:1.1 },{ n:'flowers',x:420,s:0.85 },{ n:'sign',x:660,s:0.9 },
+  { n:'tree',x:900,s:1.2 },{ n:'rock',x:1180,s:0.9 },{ n:'flowers',x:1300,s:0.8 },
+  // 甜菜峡谷（腌菜缸/蘑菇/石头）
+  { n:'picklejar',x:1480,s:1.0 },{ n:'rock',x:1640,s:1.1 },{ n:'mushroom',x:1820,s:0.9 },
+  { n:'picklejar',x:2000,s:0.9 },{ n:'flowers',x:2180,s:0.85 },{ n:'sign',x:2300,s:0.9 },
+  // 蘑菇高地（大量蘑菇/树）
+  { n:'mushroom',x:2420,s:1.1 },{ n:'mushroom',x:2580,s:0.9 },{ n:'tree',x:2740,s:1.2 },
+  { n:'mushroom',x:2920,s:1.0 },{ n:'flowers',x:3100,s:0.85 },{ n:'mushroom',x:3280,s:1.1 },
+  { n:'tree',x:3460,s:1.0 },
+  // 腌渍沼泽（腌菜缸/蘑菇/石头）
+  { n:'picklejar',x:3620,s:1.0 },{ n:'mushroom',x:3780,s:0.9 },{ n:'rock',x:3940,s:1.0 },
+  { n:'picklejar',x:4100,s:0.95 },{ n:'lantern',x:4280,s:0.9 },
+  // 暗影腌缸（灯笼/腌菜缸/宝箱）
+  { n:'lantern',x:4520,s:1.0 },{ n:'picklejar',x:4700,s:1.0 },{ n:'rock',x:4880,s:1.1 },
+  { n:'lantern',x:5060,s:1.0 },{ n:'picklejar',x:5240,s:0.95 },{ n:'rock',x:5440,s:1.0 },
+  // 袁英王座（灯笼/石头，肃杀）
+  { n:'lantern',x:5680,s:1.1 },{ n:'rock',x:5900,s:1.2 },{ n:'lantern',x:6120,s:1.1 },
+  { n:'rock',x:6300,s:1.0 },
+  // 圣泉回廊（宝箱/花/灯笼）
+  { n:'lantern',x:6540,s:1.0 },{ n:'flowers',x:6720,s:0.9 },{ n:'chest',x:6920,s:0.9 },
+  { n:'tree',x:7120,s:1.1 },{ n:'lantern',x:7320,s:1.0 }
+];
+
+/* 传送网络：按 T 打开菜单，瞬间到达已记录的世界锚点（避免长距离来回跑）。 */
+const TELEPORTS = [
+  { name:'深渊·腌鱼溯源', x:-2360, lv:2 },
+  { name:'咸鱼起源·左岸', x:-900,  lv:6 },
+  { name:'新手草原·蛙掌柜', x:520, lv:10 },
+  { name:'甜菜峡谷', x:1900, lv:18 },
+  { name:'蘑菇高地', x:3000, lv:26 },
+  { name:'腌渍沼泽', x:4000, lv:34 },
+  { name:'暗影腌缸', x:5100, lv:42 },
+  { name:'袁英王座', x:6000, lv:50 },
+  { name:'圣泉回廊·祭坛', x:WORLD_R-460, lv:56 },
+  { name:'☁ 云端浮岛', x:470, y:-320, lv:10 }
+];
+
+/* 宝箱：地图上的可开启奖励，靠近按 F 打开（一次性）。 */
+const CHEST_POS = [
+  { x:-2180, reward:'coin' }, { x:1180, reward:'potion' }, { x:3400, reward:'skill' },
+  { x:5000, reward:'coin' }, { x:6960, reward:'coin' }
+];
+let chestsOpened = [];
+
 function newPlayer() {
+  const h = HEROES[selectedHero] || HEROES.fish;
   return {
+    hero: h.id,
     x: WORLD_L + 200, y: GROUND - 96, w: 54, h: 96,
     vx: 0, vy: 0, facing: 1, onGround: true,
-    hp: 100, maxHp: 100, invuln: 0,
+    hp: h.maxHp, maxHp: h.maxHp, invuln: 0,
     attackTimer: 0, attackCd: 0, comboStep: 0,
-    airJumps: 0, maxAirJumps: 1, hasRanged: false, shotTimer: 0,
+    airJumps: 0, maxAirJumps: 1, hasRanged: h.ranged, shotTimer: 0, weapon: h.weaponId,
     dashTimer: 0, dashCd: 0, dashDir: 1, jumpCut: false,
     skill: 0, walkPhase: 0, hurt: 0, squash: 0,
     level: 1, exp: 0,
-    armor: 0, attackSpeed: 1, crit: 0, magnet: false,
+    armor: 0, attackSpeed: h.atkSpeed, crit: h.crit, magnet: false,
     revive: 0, squirrelUp: 0,
     inv: { potion: 0, heal: 0, bigpotion: 0, skill: 0 },
     owned: {}
@@ -765,8 +955,9 @@ function resetGame() {
   waveBanner = 0; shake = 0; flash = 0; gameTime = 0; hitStop = 0; areaBanner = 0;
   subtitle = ''; subtitleT = 0;
   camX = WORLD_L; camY = 0; fragments = 0; areaIndex = 0; bossDefeated = false; hasSpoon = false; skySeen = false;
+  chestsOpened = CHEST_POS.map(() => false);
   arenaMode = false; bossRage = false; jumpBuffer = 0; jumpHeld = false;
-  shopOpen = false; mapOpen = false; bagOpen = false; atkBonus = 0;
+  shopOpen = false; mapOpen = false; bagOpen = false; teleportOpen = false; atkBonus = 0;
   shopStorySeen = false;
   ELITES.forEach(d => spawnElite(d));
   nextWave();
@@ -816,6 +1007,9 @@ function spawnEnemy(forceType) {
     boss:    { hp: 2400, spd: 104, dmg: 38, pts: 8000, h: 200, ratio: 0.708 }
   }[type];
   const isBoss = type === 'boss';
+  // 彩蛋：极小概率刷出「黄金奶蛙」，又肥又值钱
+  const golden = !forceType && !isBoss && Math.random() < 0.035;
+  if (golden) type = 'minion';
   const lv = isBoss ? BOSS_LEVEL : Math.max(1, Math.min(95,
     AREA_DEFS[areaIndex].lv + Math.floor(Math.random() * 3) - 1));
   const areaScale = isBoss ? 1 : 1 + (lv - 1) * 0.055;
@@ -832,14 +1026,16 @@ function spawnEnemy(forceType) {
     if (Math.abs(x - player.x) < 320) x += side * 360;
   }
   x = Math.max(worldLeft() + 20, Math.min(worldRight() - w - 20, x));
-  const scale = areaScale * waveScale;
+  const scale = areaScale * waveScale * (golden ? 1.6 : 1);
+  const gh = golden ? Math.round(h * 1.35) : h;
+  const gw = golden ? Math.round(w * 1.35) : w;
   const hp = cfg.hp * scale;
   enemies.push({
-    id: nextId++, type, x, y: GROUND - h, lv,
-    w, h, hp, maxHp: hp,
-    spd: cfg.spd + wave * 2 + (isBoss ? 0 : lv * 0.4),
+    id: nextId++, type, x, y: GROUND - gh, lv, golden,
+    w: gw, h: gh, hp, maxHp: hp,
+    spd: (golden ? cfg.spd * 0.72 : cfg.spd) + wave * 2 + (isBoss ? 0 : lv * 0.4),
     dmg: isBoss ? cfg.dmg : Math.round(cfg.dmg * (1 + (lv - 1) * 0.035)),
-    pts: Math.round(cfg.pts * (1 + (lv - 1) * 0.03)),
+    pts: Math.round(cfg.pts * (golden ? 8 : 1) * (1 + (lv - 1) * 0.03)),
     facing: x > player.x ? -1 : 1, state: 'walk', timer: 0, hurt: 0,
     shootCooldown: 0.8 + Math.random() * 1.2,
     bob: Math.random() * 6, dead: false, deadT: 0
@@ -862,8 +1058,9 @@ function spawnElite(def) {
 function tryDash() {
   if (!player || state !== 'playing' || storyActive || shopOpen || mapOpen || bagOpen) return;
   if (player.dashCd > 0 || player.dashTimer > 0) return;
+  const hDef = HEROES[player.hero] || HEROES.fish;
   player.dashTimer = 0.2;
-  player.dashCd = 1.35;
+  player.dashCd = hDef.dashCd;
   player.dashDir = player.facing;
   player.vx = player.facing * 860;
   player.invuln = Math.max(player.invuln, 0.28);
@@ -887,16 +1084,19 @@ function tryAttack() {
 
 function firePlayerShot() {
   const p = player;
-  p.attackCd = 0.22 / player.attackSpeed;
+  const isCig = p.weapon === 'cig';
+  p.attackCd = (isCig ? 0.18 : 0.22) / player.attackSpeed;
   p.shotTimer = 0.18;
   const bx = p.facing > 0 ? p.x + p.w + 4 : p.x - 26;
   const by = p.y + 34;
   pBullets.push({
-    x: bx, y: by, w: 24, h: 14,
-    vx: p.facing * 580, life: 1.7, dmg: 22 + atkPower() + p.squirrelUp
+    x: bx, y: by, w: isCig ? 28 : 24, h: isCig ? 28 : 14,
+    vx: p.facing * (isCig ? 660 : 580), life: 1.7,
+    dmg: (isCig ? 25 : 22) + atkPower() + p.squirrelUp,
+    kind: isCig ? 'star' : 'milk', r: 0
   });
-  spawnParticles(bx + (p.facing > 0 ? 0 : 24), by + 7, 8, '#ffd451', 170);
-  beep(720, 0.07, 'triangle', 0.045);
+  spawnParticles(bx + (p.facing > 0 ? 0 : 24), by + 7, isCig ? 12 : 8, isCig ? '#ff9fd0' : '#ffd451', 170);
+  beep(isCig ? 880 : 720, 0.07, 'triangle', 0.045);
 }
 
 function fireBullet(e) {
@@ -956,6 +1156,27 @@ function nearNpc() {
   return NPCS.find(n => Math.abs(cx - n.x) < 95) || null;
 }
 
+function nearChest() {
+  if (!player || arenaMode || !nearGround(player)) return -1;
+  const cx = player.x + player.w / 2;
+  for (let i = 0; i < CHEST_POS.length; i++) {
+    if (!chestsOpened[i] && Math.abs(cx - CHEST_POS[i].x) < 70) return i;
+  }
+  return -1;
+}
+function openChest(i) {
+  chestsOpened[i] = true;
+  const c = CHEST_POS[i];
+  let msg, color = '#ffd451';
+  if (c.reward === 'potion') { player.hp = Math.min(player.maxHp, player.hp + 40); msg = '宝箱! +40 HP'; color = '#7dff9b'; }
+  else if (c.reward === 'skill') { player.skill = 100; msg = '宝箱! 必杀充满'; color = '#66e0ff'; }
+  else { const g = 200 + player.level * 20; score += g; msg = '宝箱! +' + g + ' 分'; }
+  addText(c.x, GROUND - 60, msg, color, 24);
+  spawnParticles(c.x, GROUND - 30, 22, color, 260);
+  shocks.push({ x: c.x, y: GROUND - 30, r: 0, max: 90, life: 0.4, dur: 0.4, color: color });
+  beep(980, 0.12, 'triangle', 0.06);
+  setTimeout(() => beep(1320, 0.16, 'triangle', 0.06), 90);
+}
 function tryInteract() {
   if (state !== 'playing' || storyActive) return;
   const npc = nearNpc();
@@ -965,6 +1186,8 @@ function tryInteract() {
     else openShop();
     return;
   }
+  const ci = nearChest();
+  if (ci >= 0) { openChest(ci); return; }
   trySummonBoss();
 }
 
@@ -1049,7 +1272,7 @@ function buyItem(item) {
     player.inv[item.id] = (player.inv[item.id] || 0) + 1;
   } else {
     switch (item.id) {
-      case 'squirrel':   player.hasRanged = true; break;
+      case 'squirrel':   player.hasRanged = true; player.weapon = 'squirrel'; break;
       case 'maxhp':      player.maxHp += 20; player.hp = player.maxHp; break;
       case 'atk':        atkBonus += 6; break;
       case 'armor':      player.armor = Math.min(0.6, player.armor + 0.2); break;
@@ -1076,7 +1299,7 @@ function bagCount() {
 function toggleBag() {
   if (state !== 'playing' || storyActive) return;
   bagOpen = !bagOpen;
-  if (bagOpen) { mapOpen = false; renderBag(); bagScreen.classList.remove('hidden'); }
+  if (bagOpen) { mapOpen = false; teleportOpen = false; teleportScreen.classList.add('hidden'); renderBag(); bagScreen.classList.remove('hidden'); }
   else closeBag();
 }
 function closeBag() { bagOpen = false; bagScreen.classList.add('hidden'); }
@@ -1100,15 +1323,18 @@ function renderBag() {
     }
     bagContentEl.appendChild(d);
   };
+  const hDef = HEROES[player.hero] || HEROES.fish;
   section('角色');
-  row('Lv.' + player.level + ' 腌鱼', '经验 ' + Math.floor(player.exp) + '/' + expNeeded(player.level) + '　·　最大HP ' + player.maxHp, '经验值');
+  row('Lv.' + player.level + ' ' + hDef.name, '经验 ' + Math.floor(player.exp) + '/' + expNeeded(player.level) + '　·　最大HP ' + player.maxHp, '经验值');
   section('任务道具');
   row('🥄 暗影汤勺', hasSpoon ? '已取得 · 召唤袁英的钥匙之一' : '未取得 · 击败「汤勺守卫·汤汤」掉落',
       hasSpoon ? '已拥有' : '未拥有');
   section('武器');
-  row(player.hasRanged ? '🐿 吐弹松鼠' : '👟 腌鱼牌皮鞋',
-      player.hasRanged ? '远程 · 按 J 吐子弹（伤害 ' + (22 + atkPower() + player.squirrelUp) + '）' : '近战 · 按 J 挥鞋劈砍（伤害 ' + (20 + atkPower()) + '）',
-      '已装备');
+  const wName = player.weapon === 'cig' ? '🚬 中南海星烟' : (player.weapon === 'squirrel' ? '🐿 吐弹松鼠' : '👟 腌鱼牌皮鞋');
+  const wDesc = player.weapon === 'cig' ? '远程 · 按 J 喷星系弹（伤害 ' + (25 + atkPower() + player.squirrelUp) + '，可暴击）'
+    : (player.weapon === 'squirrel' ? '远程 · 按 J 吐子弹（伤害 ' + (22 + atkPower() + player.squirrelUp) + '）'
+    : '近战 · 按 J 挥鞋劈砍（伤害 ' + (20 + atkPower()) + '）');
+  row(wName, wDesc, '已装备');
   section('被动增益');
   const passives = [
     ['攻击力', '+' + atkPower() + '（Lv加成 +' + ((player.level - 1) * 2) + '）'],
@@ -1142,19 +1368,81 @@ function useItem(id) {
 function toggleMap() {
   if (state !== 'playing' || storyActive) return;
   mapOpen = !mapOpen;
-  if (mapOpen) { bagOpen = false; bagScreen.classList.add('hidden'); }
+  if (mapOpen) { bagOpen = false; teleportOpen = false; teleportScreen.classList.add('hidden'); bagScreen.classList.add('hidden'); }
+}
+function toggleTeleport() {
+  if (state !== 'playing' || storyActive || arenaMode) return;
+  teleportOpen = !teleportOpen;
+  if (teleportOpen) {
+    mapOpen = false; bagOpen = false; bagScreen.classList.add('hidden');
+    renderTeleport();
+    teleportScreen.classList.remove('hidden');
+  } else {
+    teleportScreen.classList.add('hidden');
+  }
+  beep(720, 0.08, 'square', 0.04);
+}
+function renderTeleport() {
+  teleportListEl.innerHTML = '';
+  const px = player.x + player.w / 2;
+  TELEPORTS.forEach((tp, i) => {
+    const d = document.createElement('div');
+    const here = Math.abs(px - tp.x) < 140 && Math.abs(player.y - (tp.y || GROUND - player.h)) < 140;
+    d.className = 'teleport-item' + (here ? ' here' : '');
+    d.innerHTML = (here ? '▸ ' : '') + tp.name + '<span class="lv">Lv.' + tp.lv + (here ? ' · 当前位置' : ' · 点击传送') + '</span>';
+    d.addEventListener('click', () => doTeleport(i));
+    teleportListEl.appendChild(d);
+  });
+}
+function doTeleport(i) {
+  const tp = TELEPORTS[i];
+  if (!tp) return;
+  teleportOpen = false;
+  teleportScreen.classList.add('hidden');
+  player.x = Math.max(worldLeft() + 8, Math.min(worldRight() - player.w - 8, tp.x - player.w / 2));
+  player.y = (tp.y !== undefined ? tp.y : GROUND - player.h);
+  player.vx = 0; player.vy = 0; player.onGround = true; player.jumpCut = false;
+  camX = Math.max(worldLeft(), Math.min(worldRight() - W, player.x - W / 2));
+  camY = tp.y !== undefined ? Math.max(SKY_TOP, Math.min(0, player.y - 300)) : 0;
+  flash = 0.3; shake = 8;
+  addText(player.x + player.w / 2, player.y - 30, '传送 · ' + tp.name, '#7de8ff', 22);
+  beep(520, 0.12, 'triangle', 0.05);
+  setTimeout(() => beep(900, 0.16, 'triangle', 0.05), 90);
 }
 
 function trySkill() {
   if (!player || player.skill < 100) return;
   player.skill = 0;
-  shocks.push({ x: player.x + player.w / 2, y: player.y + player.h / 2, r: 0, max: 340, life: 0.55 });
-  shake = 16; flash = 0.25;
-  beep(140, 0.35, 'sawtooth', 0.08);
-  enemies.forEach(e => {
-    if (!e.dead && Math.abs(e.x - player.x) < 340) damageEnemy(e, 70 + atkPower() * 2, true);
-  });
-  addText(player.x + player.w / 2, player.y - 20, '腌鱼冲击波!', '#ffe066', 26);
+  const isGirl = player.hero === 'girl';
+  const px = player.x + player.w / 2, py = player.y + player.h / 2;
+  shocks.push({ x: px, y: py, r: 0, max: isGirl ? 420 : 340, life: 0.55, color: isGirl ? '#ff9fd0' : undefined });
+  shake = isGirl ? 20 : 16; flash = 0.25;
+  beep(isGirl ? 320 : 140, 0.35, 'sawtooth', 0.08);
+  // 洋夫：星烟风暴——多段彩色冲击 + 追踪星弹；腌鱼：单次咸鱼冲击波
+  const hits = isGirl ? 3 : 1;
+  for (let k = 0; k < hits; k++) {
+    setTimeout(() => {
+      if (state !== 'playing' || !player) return;
+      shocks.push({ x: px, y: py, r: 0, max: isGirl ? 300 : 340, life: 0.4, color: isGirl ? ['#ff9fd0', '#8fd3ff', '#ffd451'][k] : undefined });
+      enemies.forEach(e => {
+        if (!e.dead && Math.abs(e.x - px) < (isGirl ? 380 : 340)) {
+          damageEnemy(e, (isGirl ? 42 : 70) + atkPower() * 2, true);
+        }
+      });
+      if (isGirl) {
+        const colors = ['#ff9fd0', '#8fd3ff', '#ffd451'];
+        for (let i = 0; i < 8; i++) {
+          const a = (i / 8) * Math.PI * 2;
+          pBullets.push({
+            x: px + Math.cos(a) * 30, y: py + Math.sin(a) * 30, w: 22, h: 22,
+            vx: Math.cos(a) * 460, vy: Math.sin(a) * 460, life: 1.3,
+            dmg: 30 + atkPower(), kind: 'star', homing: false, r: 0
+          });
+        }
+      }
+    }, isGirl ? k * 130 : 0);
+  }
+  addText(px, player.y - 20, isGirl ? '星烟风暴!' : '腌鱼冲击波!', isGirl ? '#ff9fd0' : '#ffe066', 26);
 }
 
 function damageEnemy(e, dmg, ignoreInvuln) {
@@ -1191,6 +1479,16 @@ function killEnemy(e) {
   }
   spawnParticles(e.x + e.w / 2, e.y + e.h / 2, 18, '#ffd451', 280);
   spawnParticles(e.x + e.w / 2, e.y + e.h / 2, 12, '#ff9f43', 220);
+  if (e.golden) {
+    flash = Math.max(flash, 0.3); shake = Math.max(shake, 16);
+    score += 300;
+    player.skill = Math.min(100, player.skill + 40);
+    player.hp = Math.min(player.maxHp, player.hp + 30);
+    for (let i = 0; i < 5; i++) spawnParticles(e.x + e.w / 2, e.y + e.h / 2, 20, ['#ffd451', '#fff6cf', '#ff9f43'][i % 3], 360);
+    addText(e.x + e.w / 2, e.y - 70, '★ 黄金奶蛙！+300 必杀+40 HP+30', '#ffd451', 22);
+    say('传说中的黄金奶蛙！击碎它，必有厚报。', 3);
+    beep(1180, 0.3, 'triangle', 0.07);
+  }
   hitStop = Math.max(hitStop, e.type === 'boss' ? 0.14 : 0.09);
   shake = Math.max(shake, e.type === 'boss' ? 20 : 10);
   beep(e.type === 'boss' ? 90 : (e.type === 'elite' ? 140 : 320), 0.25, 'sawtooth', 0.07);
@@ -1299,10 +1597,11 @@ function update(dt) {
   let move = 0;
   if (keys['a'] || keys['arrowleft'] || keys['left']) move -= 1;
   if (keys['d'] || keys['arrowright'] || keys['right']) move += 1;
+  const spdDef = (HEROES[p.hero] || HEROES.fish).spd;
   if (p.dashTimer <= 0) {
   if (move !== 0) {
     p.facing = move;
-    p.vx += (move * 285 - p.vx) * Math.min(1, dt * 17);
+    p.vx += (move * 285 * spdDef - p.vx) * Math.min(1, dt * 17);
     p.walkPhase += dt * 13;
     if (p.onGround && Math.random() < dt * 6) {
       particles.push({ x: p.x + p.w / 2, y: GROUND - 3, vx: -move * 50, vy: -34,
@@ -1561,7 +1860,7 @@ function update(dt) {
   bullets = bullets.filter(b => b.life > 0 && b.x > worldLeft() - 60 && b.x < worldRight() + 60 && b.y > SKY_TOP - 120 && b.y < H + 80);
 
   if (p.shotTimer > 0) p.shotTimer -= dt;
-  pBullets.forEach(b => { b.x += b.vx * dt; b.life -= dt; });
+  pBullets.forEach(b => { b.x += b.vx * dt; b.y += (b.vy || 0) * dt; b.life -= dt; });
   pBullets.slice().forEach(b => {
     for (const e of enemies) {
       if (e.dead) continue;
@@ -1574,7 +1873,7 @@ function update(dt) {
       }
     }
   });
-  pBullets = pBullets.filter(b => b.life > 0 && b.x > worldLeft() - 60 && b.x < worldRight() + 60);
+  pBullets = pBullets.filter(b => b.life > 0 && b.x > worldLeft() - 60 && b.x < worldRight() + 60 && b.y > -800 && b.y < H + 100);
 
   particles.forEach(q => {
     q.life -= dt; q.vy += q.g * dt; q.x += q.vx * dt; q.y += q.vy * dt;
@@ -1641,7 +1940,44 @@ function drawGround() {
     ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(gx, GROUND + 4, gw, 2);
   }
 }
+function drawDecor() {
+  if (arenaMode || !ready) return;
+  DECOR_DATA.forEach(d => {
+    const img = imgDecor[d.n];
+    if (!img || !img.complete || !img.width) return;
+    const baseY = d.y === undefined ? GROUND : d.y;
+    const h = Math.round(img.height * (d.s || 1));
+    const w = Math.round(img.width * (d.s || 1));
+    // 只画视野附近的（含余量），减少无谓绘制
+    if (d.x + w < camX - 40 || d.x > camX + W + 40) return;
+    ctx.drawImage(img, Math.round(d.x - w / 2), Math.round(baseY - h), w, h);
+  });
+}
+function drawChests() {
+  if (arenaMode) return;
+  const img = imgDecor.chest;
+  CHEST_POS.forEach((c, i) => {
+    if (c.x < camX - 40 || c.x > camX + W + 40) return;
+    const opened = chestsOpened[i];
+    if (img && img.complete && img.width) {
+      const w = 78, h = Math.round(img.height * (w / img.width));
+      ctx.save();
+      if (opened) ctx.globalAlpha = 0.45;
+      ctx.drawImage(img, c.x - w / 2, GROUND - h, w, h);
+      ctx.restore();
+    }
+    if (!opened) {
+      ctx.fillStyle = '#ffd451';
+      ctx.font = 'bold 13px "Microsoft YaHei", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.globalAlpha = 0.6 + Math.sin(gameTime * 4) * 0.4;
+      ctx.fillText('按 F 开箱', c.x, GROUND - 96);
+      ctx.globalAlpha = 1;
+    }
+  });
+}
 function drawPlatforms() {
+  if (!platforms || !platforms.length) return; // 标题画面素材先加载完、resetGame 尚未运行时保护
   platforms.forEach(pl => {
     if (arenaMode) {
       ctx.fillStyle = '#4a3a58'; ctx.fillRect(pl.x, pl.y, pl.w, pl.h);
@@ -1802,14 +2138,42 @@ function drawPlayerBullets() {
   pBullets.forEach(b => {
     const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
     ctx.save();
-    ctx.globalAlpha = 0.4; ctx.fillStyle = '#ffd451';
-    ctx.fillRect(b.x - Math.sign(b.vx) * 30, cy - 5, 30, 10);
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = '#d98324'; ctx.fillRect(b.x, b.y, b.w, b.h);
-    ctx.fillStyle = '#ffe27a'; ctx.fillRect(b.x + 2, b.y + 2, b.w - 4, b.h - 4);
-    ctx.fillStyle = '#fff6cf'; ctx.fillRect(b.x + 4, b.y + 3, b.w - 10, 3);
-    ctx.beginPath(); ctx.arc(cx + Math.sign(b.vx) * 8, cy, 6, 0, Math.PI * 2);
-    ctx.fillStyle = '#fff3b0'; ctx.fill();
+    if (b.kind === 'star') {
+      // 洋夫的星系烟弹：旋转的彩色星芒 + 拖尾
+      b.r = (b.r || 0) + 0.25;
+      ctx.globalAlpha = 0.35;
+      const colors = ['#ff9fd0', '#8fd3ff', '#ffd451', '#b46bff'];
+      for (let i = 0; i < 4; i++) {
+        const t = gameTime * 6 - i * 0.12;
+        ctx.fillStyle = colors[i];
+        ctx.beginPath();
+        ctx.arc(cx - Math.sign(b.vx) * (10 + i * 7), cy + Math.sin(t) * 4, 6 - i, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.translate(cx, cy);
+      ctx.rotate(b.r);
+      ctx.fillStyle = '#ff6fb5';
+      ctx.beginPath();
+      const R = 13, r = 5;
+      for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4;
+        const rad = i % 2 === 0 ? R : r;
+        ctx.lineTo(Math.cos(a) * rad, Math.sin(a) * rad);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = '#fff6cf';
+      ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+    } else {
+      ctx.globalAlpha = 0.4; ctx.fillStyle = '#ffd451';
+      ctx.fillRect(b.x - Math.sign(b.vx) * 30, cy - 5, 30, 10);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#d98324'; ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.fillStyle = '#ffe27a'; ctx.fillRect(b.x + 2, b.y + 2, b.w - 4, b.h - 4);
+      ctx.fillStyle = '#fff6cf'; ctx.fillRect(b.x + 4, b.y + 3, b.w - 10, 3);
+      ctx.beginPath(); ctx.arc(cx + Math.sign(b.vx) * 8, cy, 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff3b0'; ctx.fill();
+    }
     ctx.restore();
   });
 }
@@ -1825,8 +2189,9 @@ function drawPlayer() {
   const p = player;
   const bob = p.onGround ? Math.sin(p.walkPhase) * Math.min(3, Math.abs(p.vx) / 90) : 0;
   const sq = p.squash > 0 ? Math.sin(p.squash / 0.18 * Math.PI) * 0.22 : 0;
-  let sp = imgHero;
-  if (p.hurt > 0 && tintHeroWhite) sp = tintHeroWhite;
+  const heroDef = HEROES[p.hero] || HEROES.fish;
+  let sp = heroDef.img();
+  if (p.hurt > 0 && heroDef.white()) sp = heroDef.white();
   const blink = (p.invuln > 0 && Math.floor(p.invuln * 16) % 2 === 0) ? 0.45 : 1;
 
   ctx.save();
@@ -1837,7 +2202,35 @@ function drawPlayer() {
   }
   drawSprite(sp, p.x, p.y + bob, p.w, p.h, p.facing, null, blink);
 
-  if (p.hasRanged) {
+  if (p.weapon === 'cig') {
+    // 洋夫：手举中南海香烟盒，射击时喷出星系弹
+    const cig = imgWeaponCig;
+    if (cig.complete && cig.width > 0) {
+      const shooting = p.shotTimer > 0;
+      const kick = shooting ? Math.sin((1 - p.shotTimer / 0.18) * Math.PI) * 10 : 0;
+      const bx = (p.facing > 0 ? p.x + p.w - 6 : p.x + 6) + p.facing * kick;
+      const by = p.y + 30 + bob;
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.scale(p.facing, 1);
+      ctx.rotate(shooting ? -0.18 : -0.32 + Math.sin(gameTime * 2.4) * 0.05);
+      ctx.drawImage(cig, -16, -44, 34, 50);
+      ctx.restore();
+      if (shooting) {
+        ctx.save();
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = '#ffcf5a';
+        const sx = p.facing > 0 ? p.x + p.w + 12 : p.x - 12;
+        for (let i = 0; i < 5; i++) {
+          const a = gameTime * 9 + i * 1.256;
+          ctx.beginPath();
+          ctx.arc(sx + Math.cos(a) * 8, by + 6 + Math.sin(a) * 8, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+    }
+  } else if (p.hasRanged) {
     if (imgSquirrel.complete && imgSquirrel.width > 0) {
       const shooting = p.shotTimer > 0;
       const lunge = shooting ? Math.sin((1 - p.shotTimer / 0.18) * Math.PI) * 12 : 0;
@@ -1931,15 +2324,22 @@ function drawEnemy(e) {
   const isElite = e.type === 'elite';
   let sp = isBoss ? imgBoss : (isElite ? imgElite : (isShooter ? imgRanged : imgEnemy));
   if (e.hurt > 0) sp = isBoss ? (tintBossRed || sp) : (isElite ? (tintEliteRed || sp) : (isShooter ? (tintRangedRed || sp) : (tintEnemyRed || sp)));
+  else if (e.golden && tintEnemyGold) sp = tintEnemyGold;
   const bob = Math.sin(e.bob) * (e.state === 'walk' ? 3 : 1.5);
   const alpha = e.dead ? Math.max(0, e.deadT / 0.45) : 1;
-  if ((isBoss || isElite) && !e.dead) {
+  if ((isBoss || isElite || e.golden) && !e.dead) {
     ctx.save();
-    ctx.globalAlpha = (isBoss ? 0.18 : 0.16) + Math.sin(e.bob * 0.6) * 0.07;
-    ctx.fillStyle = isBoss ? '#a855f7' : (e.dropSpoon ? '#ff5bd0' : '#ffb454');
+    ctx.globalAlpha = (isBoss ? 0.18 : 0.2) + Math.sin(e.bob * 0.6) * 0.08;
+    ctx.fillStyle = isBoss ? '#a855f7' : (e.golden ? '#ffd21a' : (e.dropSpoon ? '#ff5bd0' : '#ffb454'));
     ctx.beginPath();
-    ctx.ellipse(e.x + e.w / 2, e.y + e.h * 0.62, e.w * 0.8, e.h * 0.52, 0, 0, Math.PI * 2);
+    ctx.ellipse(e.x + e.w / 2, e.y + e.h * 0.62, e.w * 0.85, e.h * 0.55, 0, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
+  }
+  if (e.golden && !e.dead) {
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.font = 'bold 12px "Microsoft YaHei", sans-serif';
+    ctx.fillStyle = '#ffd451'; ctx.fillText('★黄金奶蛙★', e.x + e.w / 2, e.y - 8);
     ctx.restore();
   }
   drawSprite(sp, e.x, e.y + bob, e.w, e.h, e.facing, null, alpha);
@@ -2014,8 +2414,9 @@ function drawHUD() {
   ctx.font = 'bold 12px "Microsoft YaHei", sans-serif';
   ctx.fillStyle = '#7de8ff'; ctx.fillText('冲刺', 246, 46);
   ctx.fillStyle = '#1b2338'; ctx.fillRect(288, 37, 118, 9);
+  const dashCdMax = (HEROES[player.hero] || HEROES.fish).dashCd;
   ctx.fillStyle = player.dashCd > 0 ? '#3f7f9c' : '#7de8ff';
-  ctx.fillRect(289, 38, 116 * (player.dashCd > 0 ? 1 - player.dashCd / 1.35 : 1), 7);
+  ctx.fillRect(289, 38, 116 * (player.dashCd > 0 ? 1 - player.dashCd / dashCdMax : 1), 7);
 
   ctx.fillStyle = '#c792ff'; ctx.font = 'bold 15px "Microsoft YaHei", sans-serif';
   ctx.fillText('碎片 ' + fragments + '/' + FRAG_NEEDED, 620, 22);
@@ -2035,7 +2436,9 @@ function drawHUD() {
     ctx.fillText('🛡 无敌模式 ON（锁血）', W / 2, 48);
   } else {
     ctx.fillStyle = '#9fb6d8';
-    ctx.fillText('第 ' + wave + ' 波' + (player.hasRanged ? '　·　🐿 远程' : '') + '　·　M地图 B背包', W / 2, 48);
+    const heroTag = player.hero === 'girl' ? '🚬洋夫' : '🐟腌鱼';
+    const wTag = player.weapon === 'cig' ? '星烟' : (player.weapon === 'squirrel' ? '松鼠' : '皮鞋');
+    ctx.fillText(heroTag + ' · ' + wTag + ' · 第 ' + wave + ' 波 · M地图 B背包', W / 2, 48);
   }
 
   ctx.textAlign = 'right';
@@ -2166,6 +2569,12 @@ function drawMapOverlay() {
   });
   platforms.forEach(pl => { ctx.fillStyle = '#4e7c3e'; ctx.fillRect(toX(pl.x), my + mh - 16, Math.max(3, pl.w / WORLD_W * mw), 4); });
 
+  // 传送网络锚点（青色小菱形）
+  TELEPORTS.forEach(t => {
+    const tx = toX(t.x), ty = t.y !== undefined ? my + 76 : my + mh - 44;
+    ctx.fillStyle = '#7de8ff';
+    ctx.beginPath(); ctx.moveTo(tx, ty - 6); ctx.lineTo(tx + 6, ty); ctx.lineTo(tx, ty + 6); ctx.lineTo(tx - 6, ty); ctx.closePath(); ctx.fill();
+  });
   ctx.fillStyle = '#8fd3ff';
   ctx.beginPath(); ctx.arc(toX(SHOP_X), my + mh - 44, 7, 0, Math.PI * 2); ctx.fill();
   ctx.fillStyle = '#b46bff';
@@ -2198,7 +2607,8 @@ function drawMapOverlay() {
     ['#ffd451', '● 你（腌鱼 Lv.' + player.level + '）'], ['#8fd3ff', '● 蛙掌柜商店'],
     ['#b46bff', '● 暗影祭坛（召唤 Lv.100 袁英）'], ['#e0b3ff', '● 未收集的暗影碎片'],
     ['#7de0c4', '● 智敏'], ['#ff9fd0', '● 露思'],
-    ['#ff9f43', '● 精英奶蛙（橙色/粉色掉汤勺）'], ['#ffd451', '● 🥄 暗影汤勺 ' + (hasSpoon ? '已取得' : '未取得')]
+    ['#7de8ff', '◆ 传送点（按 T 打开传送网络）'], ['#ff9f43', '● 精英奶蛙（橙/粉掉汤勺）'],
+    ['#ffd451', '● 🥄 暗影汤勺 ' + (hasSpoon ? '已取得' : '未取得')], ['#e8c98a', '▣ 宝箱（靠近按 F）']
   ];
   legend.forEach((l, i) => {
     ctx.fillStyle = l[0]; ctx.fillText(l[1], lx + (i % 2) * 440, ly + Math.floor(i / 2) * 30);
@@ -2216,10 +2626,12 @@ function draw() {
   ctx.save();
   ctx.translate(-camX, -camY);
   drawGround();
+  drawDecor();
   drawPlatforms();
   if (!arenaMode) {
     drawAltar();
     drawShop();
+    drawChests();
     drawNPCs();
     drawPickups();
   }
@@ -2269,10 +2681,12 @@ function drawTitleScene() {
   camX = 0;
   drawBackdrop();
   drawGround();
+  drawDecor();
   drawPlatforms();
   drawAltar();
   drawShop();
-  drawSprite(imgHero, 140, GROUND - 160, 90, 160, 1);
+  const titleHero = HEROES[selectedHero] || HEROES.fish;
+  drawSprite(titleHero.img(), 140, GROUND - 160, 90, 160, 1);
   drawSprite(imgEnemy, 420, GROUND - 100, 82, 100, -1);
   drawSprite(imgBoss, 740, GROUND - 170, 120, 170, -1);
   ctx.fillStyle = 'rgba(18,26,48,.42)'; ctx.fillRect(0, 0, W, H);
@@ -2286,7 +2700,7 @@ function loop(ts) {
   const dt = Math.min(0.033, (ts - last) / 1000 || 0);
   last = ts;
   if (state === 'playing') {
-    if (!shopOpen && !storyActive && !mapOpen && !bagOpen) {
+    if (!shopOpen && !storyActive && !mapOpen && !bagOpen && !teleportOpen) {
       if (hitStop > 0) hitStop -= dt;
       else update(dt);
     }
@@ -2296,6 +2710,41 @@ function loop(ts) {
   else if (state === 'paused' || state === 'gameover' || state === 'victory') draw();
 }
 
+function renderHeroSelect() {
+  heroGridEl.innerHTML = '';
+  Object.values(HEROES).forEach(h => {
+    const imgSrc = h.id === 'fish' ? 'assets/hero.png' : 'assets/hero-girl.png';
+    const card = document.createElement('div');
+    card.className = 'hero-card' + (selectedHero === h.id ? ' selected' : '');
+    card.innerHTML =
+      (selectedHero === h.id ? '<div class="hc-badge">✓ 当前选择</div>' : '') +
+      '<div class="hc-portrait"><img src="' + imgSrc + '" alt="' + h.name + '"></div>' +
+      '<div class="hc-name">' + h.name + '</div>' +
+      '<div class="hc-title">' + h.title + '</div>' +
+      '<div class="hc-tag">' + h.tagline + '</div>' +
+      '<div class="hc-stats" style="color:' + h.color + '">' + h.stats + '</div>' +
+      '<div class="hc-perk">' + h.perk + '</div>' +
+      '<div class="hc-btn">' + (selectedHero === h.id ? '已选中' : '选择TA') + '</div>';
+    card.addEventListener('click', () => {
+      selectedHero = h.id;
+      beep(760, 0.08, 'triangle', 0.05);
+      renderHeroSelect();
+    });
+    heroGridEl.appendChild(card);
+  });
+}
+function openHeroSelect() {
+  if (state !== 'start') return;
+  audioCtxResume();
+  renderHeroSelect();
+  startScreen.classList.add('hidden');
+  heroSelectScreen.classList.remove('hidden');
+}
+function closeHeroSelect() {
+  heroSelectScreen.classList.add('hidden');
+  startScreen.classList.remove('hidden');
+}
+
 function startGame() {
   resetGame();
   audioCtxResume();
@@ -2303,7 +2752,8 @@ function startGame() {
   startBgm(); // 点击「开始冒险」是用户手势，可合法启动音乐
   shopScreen.classList.add('hidden');
   bagScreen.classList.add('hidden');
-  mapOpen = false;
+  teleportScreen.classList.add('hidden');
+  mapOpen = false; teleportOpen = false;
   state = 'playing';
   startScreen.classList.add('hidden');
   overScreen.classList.add('hidden');
@@ -2312,9 +2762,10 @@ function startGame() {
   storyScreen.classList.add('hidden');
   if (!prologueSeen) {
     prologueSeen = true;
-    showStory(PROLOGUE);
+    showStory(getPrologue());
   } else {
-    say('腌鱼再次跳进了腌菜缸……（按 M 看地图，B 看背包）', 5);
+    const hn = (HEROES[selectedHero] || HEROES.fish).name;
+    say(hn + '再次踏上了奶蛙大陆……（按 M 看地图，B 看背包，T 传送）', 5);
   }
 }
 function togglePause() {
@@ -2324,10 +2775,13 @@ function togglePause() {
 document.getElementById('startBtn').addEventListener('click', startGame);
 document.getElementById('restartBtn').addEventListener('click', startGame);
 document.getElementById('victoryBtn').addEventListener('click', startGame);
+document.getElementById('heroSelectBtn').addEventListener('click', openHeroSelect);
+document.getElementById('heroBackBtn').addEventListener('click', closeHeroSelect);
 document.getElementById('godBtn').addEventListener('click', toggleGodMode);
 updateGodBtn();   // 初始化按钮显示为「关」
 document.getElementById('shopCloseBtn').addEventListener('click', closeShop);
 document.getElementById('bagCloseBtn').addEventListener('click', closeBag);
+document.getElementById('teleportCloseBtn').addEventListener('click', toggleTeleport);
 storyScreen.addEventListener('pointerdown', advanceStory);
 
 requestAnimationFrame(loop);
